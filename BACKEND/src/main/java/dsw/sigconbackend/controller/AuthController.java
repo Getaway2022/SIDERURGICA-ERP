@@ -41,7 +41,8 @@ public class AuthController {
                     .secure(secureCookie)
                     .path("/auth/refresh")
                     .maxAge(7 * 24 * 60 * 60)
-                    .sameSite("Lax")
+                    // Vercel y Railway son dominios distintos en produccion.
+                    .sameSite(secureCookie ? "None" : "Lax")
                     .build();
                 response.addHeader("Set-Cookie", cookie.toString());
                 loginResponse.setRefreshToken(null); // no va en el body
