@@ -1,0 +1,406 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Recursos Humanos</h2>
+    <p>Control de asistencia, tardanzas y personal</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-secondary">Exportar Reporte</button>
+    <button class="btn btn-primary" (click)="openModalCrear()">+ Nuevo Empleado</button>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="summary-item">
+    <div class="val">{{ empleados.length }}</div>
+    <div class="lbl">Total Empleados</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #38a169">
+      {{ empleados.filter((e) => e.asistencia === 'Presente').length }}
+    </div>
+    <div class="lbl">Presentes Hoy</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #e53e3e">
+      {{ empleados.filter((e) => e.asistencia !== 'Presente').length }}
+    </div>
+    <div class="lbl">Ausentes / Tardanzas</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-header">
+    <div>
+      <div class="table-card-title">Registro de Asistencia</div>
+      <div class="td-sub" style="display: flex; align-items: center; gap: 8px">
+        <span>{{ fechaHoyTexto }} · Hora máxima de entrada:</span>
+        <ng-container *ngIf="!editandoHoraEntrada; else editarHora">
+          <strong>{{ horaEntradaEstablecida }}</strong>
+          <button class="btn btn-secondary btn-sm" (click)="abrirEdicionHoraEntrada()">
+            Editar
+          </button>
+        </ng-container>
+        <ng-template #editarHora>
+          <input type="time" [(ngModel)]="horaEntradaEditTemp" style="width: 110px" />
+          <button class="btn btn-primary btn-sm" (click)="guardarHoraEntradaGeneral()">
+            Guardar
+          </button>
+          <button class="btn btn-secondary btn-sm" (click)="cancelarEdicionHoraEntrada()">
+            Cancelar
+          </button>
+        </ng-template>
+      </div>
+    </div>
+    <select class="filter-select" [(ngModel)]="rrhhFiltroArea">
+      <option value="">Todas las áreas</option>
+      <option *ngFor="let a of areasUnicas()">{{ a }}</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Empleado</th>
+        <th>Cargo</th>
+        <th>Área</th>
+        <th>Hora Entrada</th>
+        <th>Tardanza</th>
+        <th>Asistencia</th>
+        <th>Observación</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let e of empleadosFiltrados">
+        <td>
+          <div class="emp-row">
+            <div class="emp-avatar" [style.background]="e.color">{{ e.iniciales }}</div>
+            <div>
+              <div class="td-main">{{ e.nombre }}</div>
+              <div class="td-sub">ID: {{ e.id }}</div>
+            </div>
+          </div>
+        </td>
+
+        <td>{{ e.cargo }}</td>
+        <td>{{ e.area }}</td>
+        <td>{{ e.horaEntrada }}</td>
+        <td>{{ e.tardanza }}</td>
+
+        <td style="overflow: visible">
+          <div
+            class="estado-dropdown"
+            *ngIf="!estaActualizandoAsistencia(e.empleadoId); else guardandoAsistencia"
+          >
+            <span
+              class="badge"
+              [class]="getBadgeClass(e.asistencia)"
+              style="cursor: pointer"
+              (click)="toggleDropdownAsistencia(e.id, $event)"
+            >
+              {{ e.asistencia }} ▾
+            </span>
+
+            <div
+              class="estado-menu"
+              *ngIf="dropdownAsistenciaAbierto === e.id"
+              (click)="$event.stopPropagation()"
+            >
+              <div (click)="marcarEntrada(e)">✓ Presente</div>
+              <div (click)="cambiarAsistencia(e, 'Ausente')">✗ Ausente</div>
+            </div>
+          </div>
+
+          <ng-template #guardandoAsistencia>
+            <span class="badge badge-gray" style="opacity: 0.7">Guardando...</span>
+          </ng-template>
+        </td>
+
+        <td>{{ e.observacion }}</td>
+
+        <td>
+          <div class="action-col">
+            <button class="btn btn-secondary btn-sm" (click)="openModalEditar(e)">Editar</button>
+            <button class="btn btn-danger btn-sm" (click)="pedirEliminar(e)">✕</button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- HU22 — Tardanzas y faltas -->
+<div class="table-card" style="margin-top: 20px">
+  <div class="table-card-header">
+    <div>
+      <div class="table-card-title">Tardanzas y Faltas del Mes</div>
+      <div class="table-card-sub">Resumen acumulado por empleado</div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Empleado</th>
+        <th>Área</th>
+        <th>Tardanzas</th>
+        <th>Faltas</th>
+        <th>Min. de Tardanza Acumulados</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let r of resumenIncidencias">
+        <td>{{ r.empleadoNombre }}</td>
+        <td>{{ r.area }}</td>
+        <td>
+          <span class="badge badge-yellow" *ngIf="r.totalTardanzas > 0">{{ r.totalTardanzas }}</span
+          ><span *ngIf="r.totalTardanzas === 0">—</span>
+        </td>
+        <td>
+          <span class="badge badge-red" *ngIf="r.totalFaltas > 0">{{ r.totalFaltas }}</span
+          ><span *ngIf="r.totalFaltas === 0">—</span>
+        </td>
+        <td>{{ r.totalMinutosTardanza }} min</td>
+      </tr>
+      <tr *ngIf="resumenIncidencias.length === 0">
+        <td colspan="5" style="text-align: center; color: #718096">
+          Sin tardanzas ni faltas registradas este mes
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- HU23 — Incidencias -->
+<div class="table-card" style="margin-top: 20px">
+  <div class="table-card-header">
+    <div>
+      <div class="table-card-title">Incidencias del Personal</div>
+      <div class="table-card-sub">Permisos, licencias, sanciones y accidentes</div>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center">
+      <select
+        class="filter-select"
+        [(ngModel)]="incidenciaFiltroEstado"
+        (ngModelChange)="cargarIncidenciasPersonal($event)"
+      >
+        <option value="">Todos los estados</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="Aprobado">Aprobado</option>
+        <option value="Rechazado">Rechazado</option>
+      </select>
+      <button class="btn btn-primary" (click)="openModalIncidencia()">+ Nueva Incidencia</button>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Empleado</th>
+        <th>Tipo</th>
+        <th>Periodo</th>
+        <th>Descripción</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let i of incidenciasPersonal">
+        <td>{{ i.empleado.nombre }}</td>
+        <td>
+          <span class="badge badge-gray">{{ i.tipo }}</span>
+        </td>
+        <td>
+          {{ i.fechaInicio
+          }}<span *ngIf="i.fechaFin && i.fechaFin !== i.fechaInicio"> → {{ i.fechaFin }}</span>
+        </td>
+        <td>{{ i.descripcion }}</td>
+        <td>
+          <span class="badge" [class]="getEstadoIncidenciaClass(i.estado)">{{ i.estado }}</span>
+        </td>
+        <td>
+          <div class="action-col" *ngIf="i.estado === 'Pendiente'; else resuelto">
+            <button class="btn btn-secondary btn-sm" (click)="resolverIncidencia(i, 'Aprobado')">
+              Aprobar
+            </button>
+            <button class="btn btn-danger btn-sm" (click)="resolverIncidencia(i, 'Rechazado')">
+              Rechazar
+            </button>
+          </div>
+          <ng-template #resuelto
+            ><span class="td-sub">{{ i.comentarioResolucion || '—' }}</span></ng-template
+          >
+        </td>
+      </tr>
+      <tr *ngIf="incidenciasPersonal.length === 0">
+        <td colspan="6" style="text-align: center; color: #718096">
+          No hay incidencias registradas
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL — Nueva incidencia (ngModel, sin cambios) -->
+<div class="modal-overlay" *ngIf="showModalIncidencia" (click)="closeModalIncidencia()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Nueva Incidencia del Personal</h3>
+      <button class="modal-close" (click)="closeModalIncidencia()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Empleado *</label>
+          <select [(ngModel)]="incidenciaForm.empleadoId">
+            <option [ngValue]="null">Seleccione...</option>
+            <option *ngFor="let e of empleados" [ngValue]="e.empleadoId">{{ e.nombre }}</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Tipo *</label>
+          <select [(ngModel)]="incidenciaForm.tipo">
+            <option value="Permiso">Permiso</option>
+            <option value="Licencia">Licencia</option>
+            <option value="Sancion">Sanción</option>
+            <option value="Accidente">Accidente</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Fecha Inicio *</label
+          ><input type="date" [(ngModel)]="incidenciaForm.fechaInicio" />
+        </div>
+        <div class="form-field">
+          <label>Fecha Fin</label><input type="date" [(ngModel)]="incidenciaForm.fechaFin" />
+        </div>
+        <div class="form-field" style="grid-column: 1 / -1">
+          <label>Descripción *</label>
+          <input
+            type="text"
+            [(ngModel)]="incidenciaForm.descripcion"
+            placeholder="Detalle de la incidencia"
+          />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModalIncidencia()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardarIncidencia()">Registrar Incidencia</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL — Motivo de rechazo (ngModel, sin cambios) -->
+<div class="modal-overlay" *ngIf="showModalRechazo" (click)="cerrarModalRechazo()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Rechazar Incidencia</h3>
+      <button class="modal-close" (click)="cerrarModalRechazo()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field" style="grid-column: 1 / -1">
+          <label>Motivo del rechazo (opcional)</label>
+          <input
+            type="text"
+            [(ngModel)]="motivoRechazo"
+            placeholder="Ej: Falta documentación de respaldo"
+          />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="cerrarModalRechazo()">Cancelar</button>
+        <button class="btn btn-danger" (click)="confirmarRechazo()">Confirmar Rechazo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL — Crear / Editar / Eliminar empleado (Reactive Forms) -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        {{
+          modalMode === 'crear'
+            ? 'Nuevo Empleado'
+            : modalMode === 'editar'
+              ? 'Editar Empleado'
+              : 'Confirmar Eliminación'
+        }}
+      </h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <!-- Crear / Editar — Reactive Form -->
+    <div *ngIf="modalMode !== 'eliminar'" class="modal-body">
+      <form [formGroup]="form" novalidate>
+        <div class="form-grid">
+          <!-- Nombre -->
+          <div class="form-field">
+            <label>Nombre Completo <span style="color: red">*</span></label>
+            <input
+              type="text"
+              formControlName="nombre"
+              [class.is-invalid]="isInvalid('nombre')"
+              placeholder="Nombre y apellido"
+            />
+            <div class="invalid-feedback" *ngIf="isInvalid('nombre')">
+              {{ errorMsg('nombre', 'Nombre') }}
+            </div>
+          </div>
+
+          <!-- Cargo -->
+          <div class="form-field">
+            <label>Cargo</label>
+            <input type="text" formControlName="cargo" placeholder="Cargo o puesto" />
+          </div>
+
+          <!-- Área -->
+          <div class="form-field">
+            <label>Área</label>
+            <select formControlName="area">
+              <option>Planta</option>
+              <option>Comercial</option>
+              <option>Logística</option>
+              <option>Finanzas</option>
+              <option>Administración</option>
+            </select>
+          </div>
+
+          <!-- Hora de entrada — solo en editar -->
+          <div class="form-field" *ngIf="modalMode === 'editar'">
+            <label>Hora de Entrada (deja vacío para Ausente)</label>
+            <input type="time" formControlName="horaEntradaEditar" />
+          </div>
+
+          <!-- Observación — solo en editar -->
+          <div class="form-field" *ngIf="modalMode === 'editar'">
+            <label>Observación</label>
+            <input type="text" formControlName="observacion" placeholder="Ej: Licencia médica" />
+          </div>
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardarEmpleado()">
+          {{ modalMode === 'crear' ? 'Registrar Empleado' : 'Guardar Cambios' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Eliminar — sin cambios -->
+    <div *ngIf="modalMode === 'eliminar'" class="modal-body">
+      <div class="delete-warning">
+        <div class="delete-icon">⚠️</div>
+        <p>¿Está seguro?<br /><strong>Esta acción no se puede deshacer.</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-danger" (click)="confirmarEliminar()">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" [class.visible]="toastVisible" [class.toast-error]="toastType === 'error'">
+  {{ toastMsg }}
+</div>

@@ -1,0 +1,445 @@
+<!-- src/app/features/dashboard/pedidos/pedidos.html -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Pedidos</h2>
+    <p>Registro, validación de clientes y generación de comprobantes</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-secondary" (click)="cargarPedidos()">Actualizar</button>
+    <button class="btn btn-primary" *ngIf="puedeRegistrar()" (click)="openModalCrear()">
+      + Nuevo Pedido
+    </button>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="summary-item">
+    <div class="val">{{ pedidos.length }}</div>
+    <div class="lbl">Pedidos Registrados</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #dd6b20">{{ getPedidosPendientes() }}</div>
+    <div class="lbl">Pendientes</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #38a169">{{ formatMoney(getTotalPedidos()) }}</div>
+    <div class="lbl">Total Facturado</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="filters-row">
+    <div class="search-input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input
+        type="text"
+        placeholder="Buscar por código, cliente, RUC o producto..."
+        [(ngModel)]="pedidoSearch"
+      />
+    </div>
+    <select class="filter-select" [(ngModel)]="pedidoFiltroEstado">
+      <option value="">Todos los estados</option>
+      <option value="PENDIENTE">PENDIENTE</option>
+      <option value="APROBADO">APROBADO</option>
+      <option value="RECHAZADO">RECHAZADO</option>
+      <option value="FACTURADO">FACTURADO</option>
+    </select>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Cliente</th>
+        <th>Producto</th>
+        <th>Cantidad</th>
+        <th>Subtotal</th>
+        <th>IGV</th>
+        <th>Total</th>
+        <th>Estado</th>
+        <th>Vendedor</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="loadingPedidos">
+        <td colspan="10" class="empty-row">Cargando pedidos...</td>
+      </tr>
+
+      <tr *ngFor="let p of pedidosFiltrados">
+        <td>
+          <strong>{{ p.codigo }}</strong>
+        </td>
+        <td>
+          <div class="td-main">{{ p.cliente }}</div>
+          <div class="td-sub">RUC: {{ p.ruc || '—' }}</div>
+        </td>
+        <td>{{ p.producto }}</td>
+        <td>{{ p.cantidad }}</td>
+        <td>{{ formatMoney(+p.subtotal!) }}</td>
+        <td>{{ formatMoney(+p.igv!) }}</td>
+        <td>
+          <strong>{{ formatMoney(+p.total!) }}</strong>
+        </td>
+        <td>
+          <select
+            *ngIf="p.estado === 'PENDIENTE'"
+            class="badge badge-orange"
+            [(ngModel)]="p.estado"
+            [disabled]="loadingAction"
+            (change)="cambiarEstado(p, p.estado || '')"
+          >
+            <option value="PENDIENTE">⏳ PENDIENTE</option>
+            <option value="APROBADO">✓ APROBADO</option>
+            <option value="RECHAZADO">✕ RECHAZADO</option>
+          </select>
+          <span
+            *ngIf="p.estado !== 'PENDIENTE'"
+            class="badge"
+            [class]="getBadgeClass(p.estado || '')"
+          >
+            {{ p.estado }}
+          </span>
+        </td>
+        <td>{{ p.vendedor || '—' }}</td>
+        <td>
+          <div class="action-col">
+            <button class="btn btn-ghost btn-sm" (click)="openModalVer(p)">Ver</button>
+            <button class="btn btn-primary btn-sm" (click)="generarComprobantePDF(p)">
+              📄 PDF
+            </button>
+            <button
+              *ngIf="p.estado === 'APROBADO'"
+              class="btn btn-success btn-sm"
+              [disabled]="loadingAction"
+              (click)="generarVenta(p)"
+            >
+              💰 Generar Venta
+            </button>
+            <span *ngIf="p.estado === 'FACTURADO'" class="td-sub">✓ Venta creada</span>
+          </div>
+        </td>
+      </tr>
+
+      <tr *ngIf="!loadingPedidos && pedidosFiltrados.length === 0">
+        <td colspan="10" class="empty-row">No se encontraron pedidos</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════ MODAL ══════════════════ -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ modalMode === 'crear' ? 'Nuevo Pedido' : 'Detalle de Pedido' }}</h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <!-- ── CREAR ── -->
+    <div *ngIf="modalMode === 'crear'" class="modal-body">
+      <form [formGroup]="form" autocomplete="off">
+        <div class="form-grid">
+          <!-- Cliente -->
+          <div class="form-field">
+            <label>Cliente <span class="required-star">*</span></label>
+            <input
+              type="text"
+              formControlName="cliente"
+              placeholder="Nombre del cliente"
+              [class.input-error]="isInvalid('cliente')"
+            />
+            <div class="field-error" *ngIf="isInvalid('cliente')">
+              <span class="error-icon">⚠</span> {{ errorMsg('cliente', 'Cliente') }}
+            </div>
+          </div>
+
+          <!-- RUC -->
+          <div class="form-field">
+            <label>RUC</label>
+            <input
+              type="text"
+              formControlName="ruc"
+              placeholder="20XXXXXXXXX"
+              maxlength="11"
+              (input)="form.get('ruc')?.setValue($any($event.target).value.replace(/[^0-9]/g, ''))"
+              [class.input-error]="isInvalid('ruc')"
+            />
+            <div class="field-error" *ngIf="isInvalid('ruc')">
+              <span class="error-icon">⚠</span> {{ errorMsg('ruc', 'RUC') }}
+            </div>
+            <div class="field-hint" *ngIf="!isInvalid('ruc')">11 dígitos numéricos</div>
+          </div>
+
+          <!-- Producto con dropdown -->
+          <div class="form-field full" style="position: relative">
+            <label>Producto <span class="required-star">*</span></label>
+            <input
+              type="text"
+              [value]="productoSearch"
+              (input)="onProductoInput($event)"
+              (click)="onAbrirDropdown($event)"
+              placeholder="Buscar producto del inventario..."
+              autocomplete="off"
+              [class.input-error]="isInvalid('producto')"
+            />
+
+            <!-- Dropdown inventario -->
+            <div
+              *ngIf="showDropdownProducto"
+              class="producto-dropdown"
+              (click)="$event.stopPropagation()"
+            >
+              <div
+                *ngFor="let p of productosFiltrados"
+                class="producto-item"
+                (click)="seleccionarProducto(p, $event)"
+              >
+                <div class="producto-nombre">{{ p.producto }}</div>
+                <div class="producto-meta">
+                  <span
+                    class="producto-stock"
+                    [style.color]="p.stock <= (p.stockMinimo || 0) ? '#DD6B20' : '#38A169'"
+                  >
+                    Stock: {{ p.stock }} {{ p.unidad }}
+                  </span>
+                  <span class="producto-precio">
+                    {{ formatMoney(p.precioUnitario || p.precio_unitario || 0) }}
+                  </span>
+                </div>
+                <div class="td-sub" *ngIf="p.categoria">{{ p.categoria }}</div>
+              </div>
+              <div
+                *ngIf="productosFiltrados.length === 0"
+                class="producto-item"
+                style="color: #a0aec0"
+              >
+                No se encontraron productos con stock disponible
+              </div>
+            </div>
+
+            <div class="field-error" *ngIf="isInvalid('producto')">
+              <span class="error-icon">⚠</span> {{ errorMsg('producto', 'Producto') }}
+            </div>
+          </div>
+
+          <!-- Cantidad -->
+          <div class="form-field">
+            <label>Cantidad <span class="required-star">*</span></label>
+            <input
+              type="number"
+              formControlName="cantidad"
+              placeholder="0"
+              min="1"
+              [max]="productoSeleccionado?.stock || 99999"
+              [class.input-error]="isInvalid('cantidad')"
+            />
+            <div class="field-error" *ngIf="isInvalid('cantidad')">
+              <span class="error-icon">⚠</span> {{ errorMsg('cantidad', 'Cantidad') }}
+            </div>
+            <div class="field-hint" *ngIf="productoSeleccionado && !isInvalid('cantidad')">
+              Máximo: {{ productoSeleccionado.stock }} {{ productoSeleccionado.unidad }}
+            </div>
+          </div>
+
+          <!-- Precio unitario -->
+          <div class="form-field">
+            <label>Precio Unitario (S/) <span class="required-star">*</span></label>
+            <input
+              type="number"
+              formControlName="precio_unitario"
+              placeholder="0.00"
+              [readonly]="!!productoSeleccionado"
+              [style.background]="productoSeleccionado ? '#F7FAFC' : 'white'"
+              [class.input-error]="isInvalid('precio_unitario')"
+            />
+            <div class="field-error" *ngIf="isInvalid('precio_unitario')">
+              <span class="error-icon">⚠</span> {{ errorMsg('precio_unitario', 'Precio unitario') }}
+            </div>
+            <div class="field-hint" *ngIf="productoSeleccionado">Precio fijo del inventario</div>
+          </div>
+
+          <div class="form-field full">
+            <div class="td-sub">
+              Subtotal + IGV 18% = Total. Se calcula automáticamente en el backend.
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardarPedido()" [disabled]="guardando">
+          {{ guardando ? 'Registrando...' : 'Registrar Pedido' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── VER ── -->
+    <div *ngIf="modalMode === 'ver'" class="modal-body">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Código</div>
+          <div class="detail-val">{{ pedidoForm.codigo }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Cliente</div>
+          <div class="detail-val">{{ pedidoForm.cliente }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">RUC</div>
+          <div class="detail-val">{{ pedidoForm.ruc || '—' }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Producto</div>
+          <div class="detail-val">{{ pedidoForm.producto }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Cantidad</div>
+          <div class="detail-val">{{ pedidoForm.cantidad }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Subtotal</div>
+          <div class="detail-val">{{ formatMoney(+pedidoForm.subtotal!) }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">IGV (18%)</div>
+          <div class="detail-val">{{ formatMoney(+pedidoForm.igv!) }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Total</div>
+          <div class="detail-val">
+            <strong>{{ formatMoney(+pedidoForm.total!) }}</strong>
+          </div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Estado</div>
+          <div class="detail-val">
+            <span class="badge" [class]="getBadgeClass(pedidoForm.estado || '')">{{
+              pedidoForm.estado
+            }}</span>
+          </div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Vendedor</div>
+          <div class="detail-val">{{ pedidoForm.vendedor || '—' }}</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cerrar</button>
+        <button class="btn btn-primary" (click)="generarComprobantePDF(pedidoForm)">
+          📄 Generar Comprobante
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div
+  class="toast"
+  [class.visible]="toastVisible"
+  [class.toast-error]="toastType === 'error'"
+  [class.toast-info]="toastType === 'info'"
+>
+  {{ toastMsg }}
+</div>
+
+<style>
+  /* ── Validación visual ─────────────────────────────────────── */
+  .required-star {
+    color: #e53e3e;
+    margin-left: 2px;
+  }
+
+  .input-error {
+    border-color: #e53e3e !important;
+    background-color: #fff5f5 !important;
+    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.12) !important;
+  }
+
+  .field-error {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #c53030;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 5px;
+    padding: 4px 8px;
+    background: #fff5f5;
+    border-left: 3px solid #e53e3e;
+    border-radius: 0 4px 4px 0;
+    animation: fadeInError 0.2s ease;
+  }
+
+  .error-icon {
+    font-size: 11px;
+  }
+
+  .field-hint {
+    color: #718096;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  @keyframes fadeInError {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ── Dropdown producto ─────────────────────────────────────── */
+  .producto-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 9999;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .producto-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f7fafc;
+    transition: background 0.1s;
+  }
+  .producto-item:hover {
+    background: #ebf8ff;
+  }
+  .producto-item:last-child {
+    border-bottom: none;
+  }
+  .producto-nombre {
+    font-weight: 600;
+    font-size: 13px;
+    color: #2d3748;
+  }
+  .producto-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 3px;
+  }
+  .producto-stock {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .producto-precio {
+    font-size: 12px;
+    font-weight: 700;
+    color: #2b6cb0;
+  }
+</style>

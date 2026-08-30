@@ -1,0 +1,330 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Abastecimiento</h2>
+    <p>Órdenes de compra y control de proveedores</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-primary" (click)="openModalCrear()">+ Nueva Orden de Compra</button>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="summary-item">
+    <div class="val">{{ ordenes.length }}</div>
+    <div class="lbl">Órdenes Activas</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #dd6b20">
+      {{ ordenes.filter((o) => o.estado === 'Pendiente').length }}
+    </div>
+    <div class="lbl">Pendientes Aprobación</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #38a169">
+      {{ presupuesto ? formatMoney(presupuesto.montoDisponible) : '—' }}
+    </div>
+    <div class="lbl">Capital Disponible</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="filters-row">
+    <div class="search-input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input type="text" placeholder="Buscar orden o proveedor..." [(ngModel)]="abastSearch" />
+    </div>
+    <select class="filter-select" [(ngModel)]="abastFiltroEstado">
+      <option value="">Todos los estados</option>
+      <option value="Aprobada">Aprobada</option>
+      <option value="Pendiente">Pendiente</option>
+      <option value="En tránsito">En tránsito</option>
+      <option value="Rechazada">Rechazada</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Orden</th>
+        <th>Proveedor</th>
+        <th>Producto</th>
+        <th>Cantidad</th>
+        <th>Total</th>
+        <th>Fecha Entrega</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let o of ordenesFiltradas">
+        <td>{{ o.codigo }}</td>
+        <td>
+          <div class="td-main">{{ nombreProveedor(o.proveedorId) }}</div>
+        </td>
+        <td>{{ o.producto }}</td>
+        <td>{{ o.cantidad }}</td>
+        <td>{{ formatMoney(o.total) }}</td>
+        <td>{{ o.fechaEntrega }}</td>
+        <td>
+          <div class="estado-dropdown">
+            <span
+              class="badge"
+              [class]="getBadgeClass(o.estado || '')"
+              style="cursor: pointer"
+              (click)="o._open = !o._open"
+              >{{ o.estado }} ▾</span
+            >
+            <div class="estado-menu" [style.display]="o._open ? 'block' : 'none'">
+              <div (click)="cambiarEstado(o, 'Pendiente'); o._open = false">⏳ Pendiente</div>
+              <div (click)="cambiarEstado(o, 'Aprobada'); o._open = false">✓ Aprobada</div>
+              <div (click)="cambiarEstado(o, 'En tránsito'); o._open = false">🚚 En tránsito</div>
+              <div (click)="cambiarEstado(o, 'Rechazada'); o._open = false">✕ Rechazada</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="action-col">
+            <button
+              class="btn btn-success btn-sm"
+              *ngIf="o.estado === 'Aprobada'"
+              (click)="abrirRegistrarCompra(o)"
+            >
+              Registrar Compra
+            </button>
+            <button class="btn btn-secondary btn-sm" (click)="openModalEditar(o)">Editar</button>
+            <button class="btn btn-danger btn-sm" (click)="pedirEliminar(o)">✕</button>
+          </div>
+        </td>
+      </tr>
+      <tr *ngIf="ordenesFiltradas.length === 0">
+        <td colspan="8" class="empty-row">No se encontraron resultados</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL principal -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <!-- ══ CREAR / EDITAR — Reactive Form ══ -->
+    <div *ngIf="modalMode === 'crear' || modalMode === 'editar'">
+      <div class="modal-header">
+        <h3>{{ modalMode === 'crear' ? 'Nueva Orden de Compra' : 'Editar Orden' }}</h3>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="form" novalidate>
+          <div class="form-grid">
+            <!-- Proveedor -->
+            <div class="form-field">
+              <label>Proveedor <span style="color: red">*</span></label>
+              <select formControlName="proveedorId" [class.is-invalid]="isInvalid('proveedorId')">
+                <option [ngValue]="null">Seleccione...</option>
+                <option *ngFor="let p of proveedores" [ngValue]="p.id">{{ p.nombre }}</option>
+              </select>
+              <div class="invalid-feedback" *ngIf="isInvalid('proveedorId')">
+                {{ errorMsg('proveedorId', 'Proveedor') }}
+              </div>
+            </div>
+
+            <!-- Producto -->
+            <div class="form-field">
+              <label>Producto <span style="color: red">*</span></label>
+              <input
+                type="text"
+                formControlName="producto"
+                [class.is-invalid]="isInvalid('producto')"
+                placeholder="Producto a comprar"
+              />
+              <div class="invalid-feedback" *ngIf="isInvalid('producto')">
+                {{ errorMsg('producto', 'Producto') }}
+              </div>
+            </div>
+
+            <!-- Cantidad -->
+            <div class="form-field">
+              <label>Cantidad</label>
+              <input type="text" formControlName="cantidad" placeholder="Ej: 50 TM" />
+            </div>
+
+            <!-- Total -->
+            <div class="form-field">
+              <label>Total (S/) <span style="color: red">*</span></label>
+              <input
+                type="number"
+                formControlName="total"
+                [class.is-invalid]="isInvalid('total')"
+                placeholder="0.00"
+              />
+              <div class="invalid-feedback" *ngIf="isInvalid('total')">
+                {{ errorMsg('total', 'Total') }}
+              </div>
+            </div>
+
+            <!-- Fecha Entrega -->
+            <div class="form-field">
+              <label>Fecha de Entrega</label>
+              <input type="text" formControlName="fechaEntrega" placeholder="Ej: 30 Ago 2026" />
+            </div>
+          </div>
+        </form>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+          <button class="btn btn-primary" (click)="guardarOrden()">
+            {{ modalMode === 'crear' ? 'Crear Orden' : 'Guardar Cambios' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ COMPRA — sin cambios ══ -->
+    <div *ngIf="modalMode === 'compra'">
+      <div class="modal-header">
+        <h3>Registrar Compra — {{ ordenActivaCompra?.codigo }}</h3>
+        <div style="display: flex; align-items: center; gap: 8px">
+          <button class="btn btn-secondary btn-sm" type="button" (click)="toggleSugerenciaOrden()">
+            📄 Usar datos de la orden
+          </button>
+          <button class="modal-close" (click)="closeModal()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div
+          *ngIf="mostrarSugerenciaOrden"
+          class="suggestion-box"
+          style="
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+          "
+        >
+          <div style="font-size: 0.9em; color: #4a5568">
+            <span *ngIf="cantidadSugerida() && precioUnitarioSugerido(); else sinDatos">
+              Según la orden: <strong>{{ cantidadSugerida() }}</strong> unidades a
+              <strong>S/ {{ precioUnitarioSugerido() }}</strong> c/u.
+            </span>
+            <ng-template #sinDatos
+              >No se pudo calcular un valor sugerido a partir de esta orden.</ng-template
+            >
+          </div>
+          <button
+            class="btn btn-primary btn-sm"
+            type="button"
+            [disabled]="!cantidadSugerida() || !precioUnitarioSugerido()"
+            (click)="usarDatosDeOrden()"
+          >
+            Usar estos valores
+          </button>
+        </div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label>Vincular a Inventario (opcional)</label>
+            <select [(ngModel)]="compraForm.inventarioId">
+              <option [ngValue]="null">No vincular</option>
+              <option *ngFor="let i of inventarios" [ngValue]="i.id">
+                {{ i.producto }} (stock: {{ i.stock }})
+              </option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Cantidad recibida *</label
+            ><input type="number" [(ngModel)]="compraForm.cantidad" />
+          </div>
+          <div class="form-field">
+            <label>Precio Unitario (S/) *</label
+            ><input type="number" [(ngModel)]="compraForm.precioUnitario" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+          <button class="btn btn-primary" (click)="registrarCompra()">Registrar Compra</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ELIMINAR — sin cambios ══ -->
+    <div *ngIf="modalMode === 'eliminar'">
+      <div class="modal-header">
+        <h3>Confirmar Eliminación</h3>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="delete-warning">
+          <div class="delete-icon">⚠️</div>
+          <p>¿Está seguro?<br /><strong>Esta acción no se puede deshacer.</strong></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+          <button class="btn btn-danger" (click)="confirmarEliminar()">Sí, eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal resultado compra — sin cambios -->
+<div class="modal-overlay" *ngIf="showModalResultado" (click)="cerrarModalResultado()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        {{
+          resultadoCompra?.productoCreado
+            ? '✨ Producto creado en inventario'
+            : '✓ Stock actualizado'
+        }}
+      </h3>
+      <button class="modal-close" (click)="cerrarModalResultado()">✕</button>
+    </div>
+    <div class="modal-body" *ngIf="resultadoCompra as r">
+      <p style="margin-bottom: 16px; color: #4a5568">
+        <span *ngIf="r.productoCreado"
+          >El producto <strong>"{{ r.inventario.producto }}"</strong> no existía en el inventario,
+          así que se creó automáticamente.</span
+        >
+        <span *ngIf="!r.productoCreado"
+          >Se actualizó el stock de <strong>"{{ r.inventario.producto }}"</strong> en el
+          inventario.</span
+        >
+      </p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Producto</label>
+          <div class="td-main">{{ r.inventario.producto }}</div>
+        </div>
+        <div class="form-field">
+          <label>Categoría</label>
+          <div class="td-main">{{ r.inventario.categoria }}</div>
+        </div>
+        <div class="form-field">
+          <label>Stock anterior</label>
+          <div class="td-main">{{ r.stockAnterior }}</div>
+        </div>
+        <div class="form-field">
+          <label>Cantidad agregada</label>
+          <div class="td-main">+{{ r.compra.cantidad }}</div>
+        </div>
+        <div class="form-field full">
+          <label>Stock actual</label>
+          <div class="td-main" style="font-size: 1.2em; color: #38a169; font-weight: 600">
+            {{ r.inventario.stock }}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" (click)="cerrarModalResultado()">Entendido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" [class.visible]="toastVisible" [class.toast-error]="toastType === 'error'">
+  {{ toastMsg }}
+</div>

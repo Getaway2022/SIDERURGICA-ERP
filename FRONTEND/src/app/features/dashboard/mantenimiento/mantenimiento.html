@@ -1,0 +1,148 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Mantenimiento del Sistema</h2>
+    <p>Administración de usuarios, roles y configuración del sistema</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-primary" (click)="openModalCrear()">+ Nuevo Usuario</button>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="summary-item">
+    <div class="val">{{ usuariosSistema.length }}</div>
+    <div class="lbl">Usuarios Registrados</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #38a169">
+      {{ usuariosSistema.filter((u) => esActivo(u.estado)).length }}
+    </div>
+    <div class="lbl">Usuarios Activos</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #e53e3e">
+      {{ usuariosSistema.filter((u) => !esActivo(u.estado)).length }}
+    </div>
+    <div class="lbl">Inactivos</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-header">
+    <div>
+      <div class="table-card-title">Gestión de Usuarios</div>
+      <div class="table-card-sub">Acceso y perfiles del sistema ERP</div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Usuario</th>
+        <th>Rol</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let u of usuariosSistema">
+        <td>{{ u.id }}</td>
+        <td>
+          <strong>{{ u.username }}</strong>
+        </td>
+        <td>{{ u.rolNombre }}</td>
+        <td>
+          <span class="badge" [class]="getBadgeClass(u.estado || '')">{{ u.estado }}</span>
+        </td>
+        <td>
+          <div class="action-col">
+            <button class="btn btn-ghost btn-sm">Ver</button>
+            <button class="btn btn-secondary btn-sm" (click)="openModalEditar(u)">Editar</button>
+          </div>
+        </td>
+      </tr>
+      <tr *ngIf="loadingUsuarios">
+        <td colspan="5" class="empty-row">Cargando usuarios...</td>
+      </tr>
+      <tr *ngIf="!loadingUsuarios && usuariosSistema.length === 0">
+        <td colspan="5" class="empty-row">No hay usuarios registrados</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ modalMode === 'crear' ? 'Nuevo Usuario' : 'Editar Usuario' }}</h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="form" novalidate>
+        <div class="form-grid">
+          <!-- Username -->
+          <div class="form-field">
+            <label>Usuario <span style="color: red">*</span></label>
+            <input
+              type="text"
+              formControlName="username"
+              [class.is-invalid]="isInvalid('username')"
+              placeholder="Nombre de usuario"
+            />
+            <div class="invalid-feedback" *ngIf="isInvalid('username')">
+              {{ errorMsg('username', 'Usuario') }}
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="form-field">
+            <label
+              >Contraseña
+              {{ modalMode === 'editar' ? '(dejar vacío para no cambiar)' : '*' }}</label
+            >
+            <input
+              type="password"
+              formControlName="password"
+              [class.is-invalid]="isInvalid('password')"
+              placeholder="Mín. 8 car., mayúscula, número y símbolo"
+            />
+            <div class="invalid-feedback" *ngIf="isInvalid('password')">
+              {{ errorMsg('password', 'Contraseña') }}
+            </div>
+            <small style="color: #718096; font-size: 11px">
+              8–20 caracteres · mayúscula · minúscula · número · símbolo (@$!%*?&)
+            </small>
+          </div>
+
+          <!-- Rol -->
+          <div class="form-field full">
+            <label>Rol</label>
+            <select formControlName="rolId" [class.is-invalid]="isInvalid('rolId')">
+              <option [value]="1">ADMIN</option>
+              <option [value]="2">VENTAS</option>
+              <option [value]="3">ALMACEN</option>
+              <option [value]="4">RRHH</option>
+              <option [value]="5">CONSULTA</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="isInvalid('rolId')">
+              {{ errorMsg('rolId', 'Rol') }}
+            </div>
+          </div>
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardarUsuario()" [disabled]="guardando">
+          {{
+            guardando ? 'Guardando...' : modalMode === 'crear' ? 'Crear Usuario' : 'Guardar Cambios'
+          }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" [class.visible]="toastVisible" [class.toast-error]="toastType === 'error'">
+  {{ toastMsg }}
+</div>

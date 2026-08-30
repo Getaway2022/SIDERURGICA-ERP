@@ -1,0 +1,287 @@
+<!-- src/app/features/dashboard/inventario/inventario.html -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Inventario</h2>
+    <p>Control de stock, productos y alertas de reposición</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-secondary" (click)="cargarInventario()">Actualizar</button>
+    <button class="btn btn-primary" *ngIf="puedeRegistrar()" (click)="openModalCrear()">
+      + Agregar Producto
+    </button>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="summary-item">
+    <div class="val">{{ inventarioBD.length }}</div>
+    <div class="lbl">Total SKUs</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #e53e3e">{{ alertasBajoStock }}</div>
+    <div class="lbl">Stock Crítico</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #38a169">{{ formatMoney(valorTotalInventario) }}</div>
+    <div class="lbl">Valor Total Inventario</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="filters-row">
+    <div class="search-input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input
+        type="text"
+        placeholder="Buscar producto o categoría..."
+        [(ngModel)]="inventarioSearch"
+      />
+    </div>
+    <select class="filter-select" [(ngModel)]="inventarioFiltroEstado">
+      <option value="">Todos los estados</option>
+      <option>Normal</option>
+      <option>Bajo stock</option>
+      <option>Sin stock</option>
+    </select>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Producto</th>
+        <th>Categoría</th>
+        <th>Stock</th>
+        <th>Mínimo</th>
+        <th>Precio Unit.</th>
+        <th>Valor Stock</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="loadingInventario">
+        <td colspan="9" class="empty-row">Cargando inventario...</td>
+      </tr>
+      <tr *ngFor="let p of inventarioBDFiltrado">
+        <td>
+          <strong>{{ p.id }}</strong>
+        </td>
+        <td>
+          <div class="td-main">{{ p.producto }}</div>
+          <div class="td-sub" *ngIf="p.unidad">{{ p.unidad }}</div>
+        </td>
+        <td>{{ p.categoria || '—' }}</td>
+        <td>
+          <span
+            [style.color]="
+              p.stock === 0 ? '#E53E3E' : p.stock <= (p.stockMinimo || 0) ? '#DD6B20' : '#38A169'
+            "
+            style="font-weight: 700"
+          >
+            {{ p.stock }} {{ p.unidad }}
+          </span>
+        </td>
+        <td>{{ p.stockMinimo }}</td>
+        <td>{{ p.precioUnitario ? formatMoney(p.precioUnitario) : '—' }}</td>
+        <td>{{ p.precioUnitario ? formatMoney(p.stock * p.precioUnitario) : '—' }}</td>
+        <td>
+          <span class="badge" [class]="getBadgeClass(getEstadoInventario(p))">
+            {{ getEstadoInventario(p) }}
+          </span>
+        </td>
+        <td>
+          <div class="action-col">
+            <button class="btn btn-secondary btn-sm" (click)="openModalEditar(p)">Editar</button>
+          </div>
+        </td>
+      </tr>
+      <tr *ngIf="!loadingInventario && inventarioBDFiltrado.length === 0">
+        <td colspan="9" class="empty-row">No se encontraron productos</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════ MODAL ══════════════════ -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ modalMode === 'crear' ? 'Agregar Producto' : 'Editar Producto' }}</h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="form" autocomplete="off">
+        <div class="form-grid">
+          <!-- Producto -->
+          <div class="form-field full">
+            <label>Nombre del Producto <span class="required-star">*</span></label>
+            <input
+              type="text"
+              formControlName="producto"
+              placeholder="Ej: Acero LAF 1.5mm"
+              [class.input-error]="isInvalid('producto')"
+            />
+            <div class="field-error" *ngIf="isInvalid('producto')">
+              <span class="error-icon">⚠</span> {{ errorMsg('producto', 'Producto') }}
+            </div>
+          </div>
+
+          <!-- Categoría -->
+          <div class="form-field">
+            <label>Categoría</label>
+            <input
+              type="text"
+              formControlName="categoria"
+              placeholder="Ej: Acero, Aluminio, Plástico"
+              [class.input-error]="isInvalid('categoria')"
+            />
+            <div class="field-error" *ngIf="isInvalid('categoria')">
+              <span class="error-icon">⚠</span> {{ errorMsg('categoria', 'Categoría') }}
+            </div>
+          </div>
+
+          <!-- Unidad -->
+          <div class="form-field">
+            <label>Unidad de Medida <span class="required-star">*</span></label>
+            <input
+              type="text"
+              formControlName="unidad"
+              placeholder="Ej: kg, unidad, tonelada, m²"
+              [class.input-error]="isInvalid('unidad')"
+            />
+            <div class="field-error" *ngIf="isInvalid('unidad')">
+              <span class="error-icon">⚠</span> {{ errorMsg('unidad', 'Unidad') }}
+            </div>
+          </div>
+
+          <!-- Stock inicial -->
+          <div class="form-field">
+            <label
+              >Stock {{ modalMode === 'crear' ? 'Inicial' : 'Actual' }}
+              <span class="required-star">*</span></label
+            >
+            <input
+              type="number"
+              formControlName="stock"
+              placeholder="0"
+              min="0"
+              [class.input-error]="isInvalid('stock')"
+            />
+            <div class="field-error" *ngIf="isInvalid('stock')">
+              <span class="error-icon">⚠</span> {{ errorMsg('stock', 'Stock') }}
+            </div>
+          </div>
+
+          <!-- Stock mínimo -->
+          <div class="form-field">
+            <label>Stock Mínimo <span class="required-star">*</span></label>
+            <input
+              type="number"
+              formControlName="stockMinimo"
+              placeholder="10"
+              min="0"
+              [class.input-error]="isInvalid('stockMinimo')"
+            />
+            <div class="field-error" *ngIf="isInvalid('stockMinimo')">
+              <span class="error-icon">⚠</span> {{ errorMsg('stockMinimo', 'Stock mínimo') }}
+            </div>
+            <div class="field-hint" *ngIf="!isInvalid('stockMinimo')">
+              Se mostrará alerta cuando el stock baje de este valor
+            </div>
+          </div>
+
+          <!-- Precio unitario -->
+          <div class="form-field">
+            <label>Precio Unitario (S/) <span class="required-star">*</span></label>
+            <input
+              type="number"
+              formControlName="precioUnitario"
+              placeholder="0.00"
+              step="0.01"
+              [class.input-error]="isInvalid('precioUnitario')"
+            />
+            <div class="field-error" *ngIf="isInvalid('precioUnitario')">
+              <span class="error-icon">⚠</span> {{ errorMsg('precioUnitario', 'Precio unitario') }}
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardarInventario()" [disabled]="guardando">
+          {{
+            guardando
+              ? 'Guardando...'
+              : modalMode === 'crear'
+                ? 'Agregar Producto'
+                : 'Guardar Cambios'
+          }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div
+  class="toast"
+  [class.visible]="toastVisible"
+  [class.toast-error]="toastType === 'error'"
+  [class.toast-info]="toastType === 'info'"
+>
+  {{ toastMsg }}
+</div>
+
+<style>
+  .required-star {
+    color: #e53e3e;
+    margin-left: 2px;
+  }
+
+  .input-error {
+    border-color: #e53e3e !important;
+    background-color: #fff5f5 !important;
+    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.12) !important;
+  }
+
+  .field-error {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #c53030;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 5px;
+    padding: 4px 8px;
+    background: #fff5f5;
+    border-left: 3px solid #e53e3e;
+    border-radius: 0 4px 4px 0;
+    animation: fadeInError 0.2s ease;
+  }
+
+  .error-icon {
+    font-size: 11px;
+  }
+
+  .field-hint {
+    color: #718096;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  @keyframes fadeInError {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>

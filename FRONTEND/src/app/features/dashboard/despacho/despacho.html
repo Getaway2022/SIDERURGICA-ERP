@@ -1,0 +1,231 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Despacho</h2>
+    <p>Control de envíos y confirmación de entregas</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-primary" (click)="openModalCrear()">+ Nuevo Despacho</button>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="summary-item">
+    <div class="val" style="color: #dd6b20">
+      {{ despachos.filter((d) => d.estado === 'PENDIENTE').length }}
+    </div>
+    <div class="lbl">Pendientes</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #d69e2e">
+      {{ despachos.filter((d) => d.estado === 'PREPARADO').length }}
+    </div>
+    <div class="lbl">Preparados</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #2b6cb0">
+      {{ despachos.filter((d) => d.estado === 'ENVIADO').length }}
+    </div>
+    <div class="lbl">En Tránsito</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #38a169">
+      {{ despachos.filter((d) => d.estado === 'ENTREGADO').length }}
+    </div>
+    <div class="lbl">Entregados</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="filters-row">
+    <div class="search-input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input type="text" placeholder="Buscar por cliente o guía..." [(ngModel)]="despachoSearch" />
+    </div>
+    <select class="filter-select" [(ngModel)]="despachoFiltroEstado">
+      <option value="">Todos</option>
+      <option value="PENDIENTE">Pendiente</option>
+      <option value="PREPARADO">Preparado</option>
+      <option value="ENVIADO">Enviado</option>
+      <option value="ENTREGADO">Entregado</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Guía</th>
+        <th>Cliente</th>
+        <th>Dirección</th>
+        <th>Producto</th>
+        <th>Peso</th>
+        <th>Transportista</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let d of despachosFiltrados">
+        <td>{{ d.codigo }}</td>
+        <td>
+          <div class="td-main">{{ d.cliente }}</div>
+        </td>
+        <td>{{ d.direccion }}</td>
+        <td>{{ d.producto }}</td>
+        <td>{{ d.peso }}</td>
+        <td>{{ d.transportista }}</td>
+        <td>
+          <span class="badge" [class]="getBadgeClass(d.estado)">{{ d.estado }}</span>
+        </td>
+        <td>
+          <div class="action-col">
+            <button
+              class="btn btn-secondary btn-sm"
+              *ngIf="d.estado === 'PENDIENTE'"
+              (click)="preparar(d)"
+            >
+              Preparar
+            </button>
+            <button
+              class="btn btn-secondary btn-sm"
+              *ngIf="(d.estado === 'PREPARADO' || d.estado === 'ENVIADO') && !d.comprobanteValidado"
+              (click)="abrirComprobante(d)"
+            >
+              Validar Comprobante
+            </button>
+            <button
+              class="btn btn-success btn-sm"
+              *ngIf="d.estado !== 'ENTREGADO' && d.comprobanteValidado"
+              (click)="confirmarEntrega(d)"
+            >
+              ✓ Confirmar Entrega
+            </button>
+            <button class="btn btn-ghost btn-sm" (click)="openModalEditar(d)">Editar</button>
+            <button class="btn btn-danger btn-sm" (click)="pedirEliminar(d)">✕</button>
+          </div>
+        </td>
+      </tr>
+      <tr *ngIf="despachosFiltrados.length === 0">
+        <td colspan="8" class="empty-row">No se encontraron resultados</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <!-- ══ CREAR / EDITAR — Reactive Form ══ -->
+    <div *ngIf="modalMode === 'crear' || modalMode === 'editar'">
+      <div class="modal-header">
+        <h3>{{ modalMode === 'crear' ? 'Nuevo Despacho' : 'Editar Despacho' }}</h3>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="form" novalidate>
+          <div class="form-grid">
+            <!-- Cliente -->
+            <div class="form-field">
+              <label>Cliente <span style="color: red">*</span></label>
+              <input
+                type="text"
+                formControlName="cliente"
+                [class.is-invalid]="isInvalid('cliente')"
+                placeholder="Nombre del cliente"
+              />
+              <div class="invalid-feedback" *ngIf="isInvalid('cliente')">
+                {{ errorMsg('cliente', 'Cliente') }}
+              </div>
+            </div>
+
+            <!-- Producto -->
+            <div class="form-field">
+              <label>Producto <span style="color: red">*</span></label>
+              <input
+                type="text"
+                formControlName="producto"
+                [class.is-invalid]="isInvalid('producto')"
+                placeholder="Producto a despachar"
+              />
+              <div class="invalid-feedback" *ngIf="isInvalid('producto')">
+                {{ errorMsg('producto', 'Producto') }}
+              </div>
+            </div>
+
+            <!-- Dirección -->
+            <div class="form-field full">
+              <label>Dirección de Entrega</label>
+              <input type="text" formControlName="direccion" placeholder="Dirección completa" />
+            </div>
+
+            <!-- Peso -->
+            <div class="form-field">
+              <label>Peso</label>
+              <input type="text" formControlName="peso" placeholder="Ej: 12 TM" />
+            </div>
+
+            <!-- Transportista -->
+            <div class="form-field">
+              <label>Transportista</label>
+              <input
+                type="text"
+                formControlName="transportista"
+                placeholder="Empresa transportista"
+              />
+            </div>
+          </div>
+        </form>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+          <button class="btn btn-primary" (click)="guardarDespacho()">
+            {{ modalMode === 'crear' ? 'Registrar Despacho' : 'Guardar Cambios' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ COMPROBANTE — sin cambios ══ -->
+    <div *ngIf="modalMode === 'comprobante'">
+      <div class="modal-header">
+        <h3>Validar Comprobante — {{ despachoActivo?.codigo }}</h3>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field full">
+          <label>Código / Referencia de comprobante *</label
+          ><input
+            type="text"
+            [(ngModel)]="comprobanteTexto"
+            placeholder="Ej: guía firmada, foto, código"
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+          <button class="btn btn-primary" (click)="validarComprobante()">Validar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ELIMINAR — sin cambios ══ -->
+    <div *ngIf="modalMode === 'eliminar'">
+      <div class="modal-header">
+        <h3>Confirmar Eliminación</h3>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="delete-warning">
+          <div class="delete-icon">⚠️</div>
+          <p>¿Está seguro?<br /><strong>Esta acción no se puede deshacer.</strong></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+          <button class="btn btn-danger" (click)="confirmarEliminar()">Sí, eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" [class.visible]="toastVisible" [class.toast-error]="toastType === 'error'">
+  {{ toastMsg }}
+</div>

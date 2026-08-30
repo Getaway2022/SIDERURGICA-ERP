@@ -1,0 +1,286 @@
+<!-- ════════════════════════════════
+     REPORTES — datos desde DataService
+     ════════════════════════════════ -->
+
+<!-- ENCABEZADO -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Reportes</h2>
+    <p>Análisis de indicadores clave del negocio</p>
+  </div>
+  <div class="page-header-right">
+    <select class="filter-select" [(ngModel)]="periodoSeleccionado">
+      <option *ngFor="let p of periodos">{{ p }}</option>
+    </select>
+    <button class="btn btn-primary" (click)="exportar()">Exportar</button>
+  </div>
+</div>
+
+<!-- ── MÉTRICAS PRINCIPALES ── -->
+<div class="cards-grid">
+  <!-- Ingresos -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <div class="metric-icon blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+      </div>
+      <span
+        class="metric-trend"
+        [class.trend-up]="pctVentas() >= 0"
+        [class.trend-down]="pctVentas() < 0"
+      >
+        {{ pctVentas() >= 0 ? '↑' : '↓' }} {{ pctVentas() | number: '1.1-1' }}%
+      </span>
+    </div>
+    <div>
+      <div class="metric-value">S/ {{ ventasTotales() / 1000000 | number: '1.1-2' }}M</div>
+      <div class="metric-label">Ingresos Totales (Pedidos Aprobados)</div>
+    </div>
+  </div>
+
+  <!-- Utilidad Bruta -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <div class="metric-icon green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </div>
+      <span
+        class="metric-trend"
+        [class.trend-up]="pctUtilidad() >= 0"
+        [class.trend-down]="pctUtilidad() < 0"
+      >
+        {{ pctUtilidad() >= 0 ? '↑' : '↓' }} {{ pctUtilidad() | number: '1.1-1' }}%
+      </span>
+    </div>
+    <div>
+      <div class="metric-value">S/ {{ utilidadBruta() / 1000000 | number: '1.1-2' }}M</div>
+      <div class="metric-label">Utilidad Bruta Estimada (~30%)</div>
+    </div>
+  </div>
+
+  <!-- SKUs en Stock -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <div class="metric-icon orange">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+          />
+        </svg>
+      </div>
+      <span
+        class="metric-trend"
+        [class.trend-up]="pctSkus() >= 0"
+        [class.trend-down]="pctSkus() < 0"
+      >
+        {{ pctSkus() >= 0 ? '↑' : '↓' }} {{ pctSkus() | number: '1.1-1' }}%
+      </span>
+    </div>
+    <div>
+      <div class="metric-value">{{ skusEnInventario() }}</div>
+      <div class="metric-label">
+        SKUs en Inventario
+        <span
+          *ngIf="skusCriticos().length > 0"
+          style="color: #e53e3e; font-size: 11px; margin-left: 4px"
+        >
+          ({{ skusCriticos().length }} sin stock)
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal Activo -->
+  <div class="metric-card">
+    <div class="metric-header">
+      <div class="metric-icon red">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+        </svg>
+      </div>
+      <span
+        class="metric-trend"
+        [class.trend-up]="pctPersonal() >= 0"
+        [class.trend-down]="pctPersonal() < 0"
+      >
+        {{ pctPersonal() >= 0 ? '↑' : '↓' }} {{ pctPersonal() | number: '1.1-1' }}%
+      </span>
+    </div>
+    <div>
+      <div class="metric-value">{{ personalActivo() }}</div>
+      <div class="metric-label">Personal Activo</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── GRÁFICOS ── -->
+<div class="charts-grid">
+  <!-- Ventas mensuales -->
+  <div class="chart-card">
+    <div class="chart-title">Ventas Mensuales 2026</div>
+    <div class="chart-sub">Ingresos en millones de soles (S/)</div>
+    <div class="bar-chart">
+      <div class="bar-group" *ngFor="let v of ventasPorMes()">
+        <div class="bar" [style.height.%]="v.pct" [title]="'S/ ' + (v.valor | number)"></div>
+        <div class="bar-label">{{ v.mes }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Distribución inventario -->
+  <div class="chart-card">
+    <div class="chart-title">Distribución de Inventario</div>
+    <div class="chart-sub">Por categoría de producto (stock en unidades/TM)</div>
+    <div class="donut-wrap">
+      <svg class="donut-svg" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" stroke-width="18" />
+        <circle
+          *ngFor="let s of donutSegments()"
+          cx="60"
+          cy="60"
+          r="50"
+          fill="none"
+          [attr.stroke]="s.color"
+          stroke-width="18"
+          [attr.stroke-dasharray]="s.dash + ' ' + (314 - s.dash)"
+          [attr.stroke-dashoffset]="-s.offset"
+          transform="rotate(-90 60 60)"
+        />
+        <text
+          x="60"
+          y="62"
+          text-anchor="middle"
+          font-size="11"
+          font-weight="800"
+          fill="#2D3748"
+          font-family="Inter"
+        >
+          {{ skusEnInventario() }} SKUs
+        </text>
+      </svg>
+      <div class="donut-legend">
+        <div class="legend-item" *ngFor="let s of donutSegments()">
+          <div class="legend-dot" [style.background]="s.color"></div>
+          <div class="legend-label">{{ s.categoria }}</div>
+          <div class="legend-pct">{{ s.pct }}%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOP PRODUCTOS ── -->
+<div class="table-card">
+  <div class="table-card-header">
+    <div>
+      <div class="table-card-title">Top Productos — Ingresos Acumulados</div>
+      <div class="table-card-sub">Basado en pedidos aprobados del período</div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Producto</th>
+        <th>Cantidad (unid/TM)</th>
+        <th>Ingresos</th>
+        <th>% del Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let p of topProductos()">
+        <td>
+          <strong>{{ p.rank }}</strong>
+        </td>
+        <td>{{ p.nombre }}</td>
+        <td>{{ p.cantidad }}</td>
+        <td>
+          <strong>S/ {{ p.ingresos | number }}</strong>
+        </td>
+        <td>
+          <span style="color: #38a169; font-weight: 700">
+            {{
+              ventasTotales() > 0 ? ((p.ingresos / ventasTotales()) * 100 | number: '1.1-1') : 0
+            }}%
+          </span>
+        </td>
+      </tr>
+      <tr *ngIf="topProductos().length === 0">
+        <td colspan="5" style="text-align: center; color: #718096; padding: 24px">
+          Sin pedidos aprobados en el período
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── RESUMEN OPERATIVO ── -->
+<div class="charts-grid" style="margin-top: 0">
+  <!-- Cotizaciones -->
+  <div class="chart-card">
+    <div class="chart-title">Cotizaciones del Período</div>
+    <div class="chart-sub">Tasa de conversión a pedido</div>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; color: #4a5568">Total cotizaciones</span>
+        <strong>{{ cotizaciones().length }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; color: #4a5568">Aprobadas</span>
+        <strong style="color: #38a169">{{ cotizAprobadas() }}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; color: #4a5568">Tasa de conversión</span>
+        <strong style="color: #2b6cb0; font-size: 18px">{{ cotizTasa() }}%</strong>
+      </div>
+      <div style="background: #e2e8f0; border-radius: 4px; height: 8px; margin-top: 4px">
+        <div
+          [style.width.%]="cotizTasa()"
+          style="background: #2b6cb0; height: 8px; border-radius: 4px; transition: width 0.4s"
+        ></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Indicadores operativos -->
+  <div class="chart-card">
+    <div class="chart-title">Indicadores Operativos</div>
+    <div class="chart-sub">Estado actual del sistema</div>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; color: #4a5568">Pedidos pendientes</span>
+        <span
+          class="badge"
+          [class.badge-orange]="pedidosPendientes() > 0"
+          [class.badge-green]="pedidosPendientes() === 0"
+        >
+          {{ pedidosPendientes() }}
+        </span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; color: #4a5568">Despachos activos</span>
+        <span class="badge badge-blue">{{ despachosRegistrados() }}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; color: #4a5568">SKUs con stock crítico</span>
+        <span
+          class="badge"
+          [class.badge-red]="skusCriticos().length > 0"
+          [class.badge-green]="skusCriticos().length === 0"
+        >
+          {{ skusCriticos().length }}
+        </span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 13px; color: #4a5568">Masa salarial mensual</span>
+        <strong>S/ {{ masaSalarial() | number }}</strong>
+      </div>
+    </div>
+  </div>
+</div>

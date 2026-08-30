@@ -1,0 +1,717 @@
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SPRINT 8 — PLANILLAS  (HU24 · HU25 · HU26)
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Planillas</h2>
+    <p>Control salarial · Cálculo automático · Validación · Pagos</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-primary" (click)="abrirModalGenerar()">+ Generar Planilla</button>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start">
+  <!-- Lista de planillas -->
+  <div class="table-card" style="padding: 0; overflow: hidden">
+    <div
+      class="table-card-header"
+      style="padding: 14px 16px; border-bottom: 1px solid var(--border)"
+    >
+      <div class="table-card-title">Períodos</div>
+    </div>
+    <div *ngIf="loadingPlanillas" style="padding: 24px; text-align: center; color: #718096">
+      Cargando…
+    </div>
+    <div
+      *ngIf="!loadingPlanillas && planillas.length === 0"
+      style="padding: 32px; text-align: center; color: #718096"
+    >
+      <div style="font-size: 32px; margin-bottom: 8px">📋</div>
+      <div>Sin planillas.<br />Genera la primera.</div>
+    </div>
+    <div
+      *ngFor="let p of planillas"
+      [style.background]="planillaSeleccionada?.id === p.id ? 'var(--primary-light,#EBF8FF)' : ''"
+      (click)="seleccionarPlanilla(p)"
+      style="
+        padding: 12px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+      "
+    >
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <div>
+          <div style="font-weight: 700; font-size: 14px">{{ formatPeriodo(p.periodo) }}</div>
+          <div style="font-size: 12px; color: #718096; margin-top: 2px">{{ p.periodo }}</div>
+        </div>
+        <span class="badge" [class]="getBadgeEstado(p.estado)">{{ p.estado }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalle -->
+  <div>
+    <div
+      *ngIf="!planillaSeleccionada"
+      class="table-card"
+      style="padding: 56px; text-align: center; color: #718096"
+    >
+      <div style="font-size: 48px; margin-bottom: 12px">👈</div>
+      <div>Selecciona un período para ver el detalle de sueldos</div>
+    </div>
+
+    <ng-container *ngIf="planillaSeleccionada">
+      <!-- KPIs -->
+      <div class="summary-strip" style="margin-bottom: 16px">
+        <div class="summary-item">
+          <div class="val">{{ formatMoney(totalNeto()) }}</div>
+          <div class="lbl">Total Planilla</div>
+        </div>
+        <div class="summary-item">
+          <div class="val">{{ detalles.length }}</div>
+          <div class="lbl">Empleados</div>
+        </div>
+        <div class="summary-item">
+          <div class="val" style="color: #38a169">{{ totalPagados() }}</div>
+          <div class="lbl">Pagados</div>
+        </div>
+        <div class="summary-item">
+          <div class="val" style="color: #dd6b20">{{ totalPendientesPago() }}</div>
+          <div class="lbl">Pendientes Pago</div>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap">
+        <span
+          class="badge"
+          style="font-size: 14px; padding: 6px 12px"
+          [class]="getBadgeEstado(planillaSeleccionada.estado)"
+        >
+          Estado: {{ planillaSeleccionada.estado }}
+        </span>
+        <button
+          class="btn btn-secondary"
+          *ngIf="planillaSeleccionada.estado === 'Borrador' && detalles.length > 0"
+          [disabled]="guardando"
+          (click)="validarTodaLaPlanilla()"
+        >
+          ✔ Aprobar Planilla Completa
+        </button>
+      </div>
+
+      <!-- Tabla de detalles -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-title">
+            Detalle de Sueldos — {{ formatPeriodo(planillaSeleccionada.periodo) }}
+          </div>
+        </div>
+        <div *ngIf="loadingDetalles" style="padding: 24px; text-align: center; color: #718096">
+          Calculando sueldos…
+        </div>
+        <div style="overflow-x: auto" *ngIf="!loadingDetalles">
+          <table>
+            <thead>
+              <tr>
+                <th>Empleado</th>
+                <th style="text-align: center">Asistencia</th>
+                <th style="text-align: right">Salario Base</th>
+                <th style="text-align: right">Descuentos</th>
+                <th style="text-align: right">Bonos</th>
+                <th style="text-align: right">Sueldo Neto</th>
+                <th style="text-align: center">Validado</th>
+                <th style="text-align: center">Pago</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let det of detalles">
+                <td>
+                  <div class="emp-row">
+                    <div class="emp-avatar" [style.background]="getColor(det.empleado.nombre)">
+                      {{ getIniciales(det.empleado.nombre) }}
+                    </div>
+                    <div>
+                      <div style="font-weight: 600">{{ det.empleado.nombre }}</div>
+                      <div style="font-size: 12px; color: #718096">{{ det.empleado.cargo }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align: center; font-size: 12px">
+                  <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap">
+                    <span style="color: #38a169; font-weight: 600">✓ {{ det.diasPresentes }}</span>
+                    <span style="color: #dd6b20; font-weight: 600" *ngIf="det.diasTardanza > 0"
+                      >⏰ {{ det.diasTardanza }}</span
+                    >
+                    <span style="color: #e53e3e; font-weight: 600" *ngIf="det.diasAusente > 0"
+                      >✗ {{ det.diasAusente }}</span
+                    >
+                  </div>
+                </td>
+                <td style="text-align: right">{{ formatMoney(det.salarioBase) }}</td>
+                <td
+                  style="text-align: right; color: #e53e3e"
+                  [title]="
+                    'AFP: ' +
+                    formatMoney(det.descuentoAfp) +
+                    ' | Faltas: ' +
+                    formatMoney(det.descuentoFaltas) +
+                    ' | Tardanzas: ' +
+                    formatMoney(det.descuentoTardanzas)
+                  "
+                >
+                  - {{ formatMoney(det.totalDescuentos) }}
+                </td>
+                <td style="text-align: right; color: #38a169">
+                  <ng-container
+                    *ngIf="planillaSeleccionada!.estado === 'Borrador'; else soloBonoTpl"
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                        justify-content: flex-end;
+                      "
+                    >
+                      <span style="font-size: 12px; color: #718096">S/</span>
+                      <input
+                        type="number"
+                        min="0"
+                        style="
+                          width: 72px;
+                          padding: 2px 4px;
+                          border: 1px solid var(--border);
+                          border-radius: 4px;
+                          font-size: 13px;
+                          text-align: right;
+                        "
+                        [(ngModel)]="det.bonificacion"
+                        (blur)="guardarBonificacion(det)"
+                      />
+                    </div>
+                  </ng-container>
+                  <ng-template #soloBonoTpl>+ {{ formatMoney(det.bonificacion) }}</ng-template>
+                </td>
+                <td style="text-align: right">
+                  <strong style="font-size: 15px">{{ formatMoney(det.sueldoNeto) }}</strong>
+                </td>
+                <td style="text-align: center">
+                  <span
+                    *ngIf="det.validado"
+                    style="color: #38a169; font-size: 18px"
+                    title="Validado"
+                    >✔</span
+                  >
+                  <span
+                    *ngIf="!det.validado"
+                    style="color: #cbd5e0; font-size: 18px"
+                    title="Pendiente"
+                    >○</span
+                  >
+                </td>
+                <td style="text-align: center">
+                  <span *ngIf="getPagoDeDetalle(det)" class="badge badge-green">Pagado</span>
+                  <span *ngIf="!getPagoDeDetalle(det) && det.validado" class="badge badge-orange"
+                    >Pendiente</span
+                  >
+                  <span
+                    *ngIf="!getPagoDeDetalle(det) && !det.validado"
+                    class="badge"
+                    style="background: #edf2f7; color: #718096"
+                    >Sin validar</span
+                  >
+                </td>
+                <td>
+                  <div class="action-col">
+                    <button class="btn btn-ghost btn-sm" (click)="verBoleta(det)">Boleta</button>
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      *ngIf="!det.validado && planillaSeleccionada!.estado === 'Borrador'"
+                      (click)="abrirModalValidar(det)"
+                    >
+                      Validar
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      *ngIf="det.validado && !getPagoDeDetalle(det)"
+                      (click)="abrirModalPagar(det)"
+                    >
+                      Pagar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<!-- ══ MODAL: Generar planilla ══════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showModalGenerar" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()" style="max-width: 440px">
+    <div class="modal-header">
+      <h3>Generar Planilla — HU24</h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color: #718096; font-size: 14px; margin-bottom: 16px">
+        El sistema calculará automáticamente el sueldo de cada empleado activo según su asistencia
+        del período.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Período *</label>
+        <input class="form-control" type="month" [(ngModel)]="formPeriodo" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="generarPlanilla()" [disabled]="guardando">
+          {{ guardando ? 'Calculando…' : '⚙ Calcular y Generar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Validar detalle ════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showModalValidar && detalleSeleccionado" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()" style="max-width: 480px">
+    <div class="modal-header">
+      <h3>Validar Sueldo — {{ detalleSeleccionado.empleado.nombre }}</h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background: #f7fafc; border-radius: 8px; padding: 14px; margin-bottom: 16px">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px">
+          <div>
+            <span style="color: #718096">Días laborables:</span>
+            <strong>{{ detalleSeleccionado.diasLaborables }}</strong>
+          </div>
+          <div>
+            <span style="color: #718096">Presentes:</span>
+            <strong style="color: #38a169">{{ detalleSeleccionado.diasPresentes }}</strong>
+          </div>
+          <div>
+            <span style="color: #718096">Tardanzas:</span>
+            <strong style="color: #dd6b20">{{ detalleSeleccionado.diasTardanza }}</strong>
+          </div>
+          <div>
+            <span style="color: #718096">Ausentes:</span>
+            <strong style="color: #e53e3e">{{ detalleSeleccionado.diasAusente }}</strong>
+          </div>
+          <div>
+            <span style="color: #718096">Min. tardanza:</span>
+            <strong>{{ detalleSeleccionado.totalMinutosTardanza }} min</strong>
+          </div>
+          <div></div>
+          <div>
+            <span style="color: #718096">Salario base:</span>
+            <strong>{{ formatMoney(detalleSeleccionado.salarioBase) }}</strong>
+          </div>
+          <div>
+            <span style="color: #718096">AFP (10%):</span>
+            <strong style="color: #e53e3e"
+              >- {{ formatMoney(detalleSeleccionado.descuentoAfp) }}</strong
+            >
+          </div>
+          <div>
+            <span style="color: #718096">Desc. faltas:</span>
+            <strong style="color: #e53e3e"
+              >- {{ formatMoney(detalleSeleccionado.descuentoFaltas) }}</strong
+            >
+          </div>
+          <div>
+            <span style="color: #718096">Desc. tardanzas:</span>
+            <strong style="color: #e53e3e"
+              >- {{ formatMoney(detalleSeleccionado.descuentoTardanzas) }}</strong
+            >
+          </div>
+          <div>
+            <span style="color: #718096">Bonificación:</span>
+            <strong style="color: #38a169"
+              >+ {{ formatMoney(detalleSeleccionado.bonificacion) }}</strong
+            >
+          </div>
+          <div></div>
+        </div>
+        <div
+          style="
+            border-top: 2px solid #e2e8f0;
+            margin-top: 10px;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+          "
+        >
+          <span style="font-weight: 700">SUELDO NETO</span>
+          <span style="font-weight: 800; font-size: 18px; color: #1a365d">{{
+            formatMoney(detalleSeleccionado.sueldoNeto)
+          }}</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observación (opcional)</label>
+        <input
+          class="form-control"
+          type="text"
+          [(ngModel)]="formObsValidacion"
+          placeholder="Revisado y conforme"
+        />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="validarDetalle()" [disabled]="guardando">
+          {{ guardando ? 'Validando…' : '✔ Aprobar Sueldo' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Registrar pago ════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showModalPagar && detalleSeleccionado" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()" style="max-width: 420px">
+    <div class="modal-header">
+      <h3>Registrar Pago — {{ detalleSeleccionado.empleado.nombre }}</h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div
+        style="
+          background: #f0fff4;
+          border: 1px solid #9ae6b4;
+          border-radius: 8px;
+          padding: 14px;
+          margin-bottom: 16px;
+          text-align: center;
+        "
+      >
+        <div style="color: #718096; font-size: 13px">Monto a pagar</div>
+        <div style="font-size: 28px; font-weight: 800; color: #22543d">
+          {{ formatMoney(detalleSeleccionado.sueldoNeto) }}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Método de Pago *</label>
+        <select class="form-control" [(ngModel)]="formMetodoPago">
+          <option value="Transferencia">Transferencia Bancaria</option>
+          <option value="Cheque">Cheque</option>
+          <option value="Efectivo">Efectivo</option>
+        </select>
+      </div>
+      <div class="form-group" *ngIf="formMetodoPago !== 'Efectivo'">
+        <label class="form-label">N.° Operación / Cheque</label>
+        <input
+          class="form-control"
+          type="text"
+          [(ngModel)]="formNumeroOperacion"
+          placeholder="Ej. TRF-2026-0718"
+        />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="registrarPago()" [disabled]="guardando">
+          {{ guardando ? 'Registrando…' : '💳 Confirmar Pago' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Boleta de pago ════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showModalBoleta && boletaDetalle" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()" style="max-width: 500px">
+    <div class="modal-header">
+      <h3>Boleta de Pago</h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- ▼ Este div es el que se captura para el PDF — NO mover ni renombrar #boletaRef -->
+      <div #boletaRef class="boleta" style="background: #fff; padding: 24px; border-radius: 8px">
+        <!-- Encabezado empresa -->
+        <div
+          class="boleta-header"
+          style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+          "
+        >
+          <div class="boleta-logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#1A365D" stroke-width="2" width="36">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <div>
+            <div style="font-weight: 800; font-size: 17px; color: #1a365d">
+              Siderúrgica Perú S.A.C.
+            </div>
+            <div style="font-size: 12px; color: #718096">
+              Boleta de Pago — {{ formatPeriodo(boletaDetalle.planilla.periodo) }}
+            </div>
+            <div style="font-size: 11px; color: #a0aec0">R.U.C. 20123456789</div>
+          </div>
+        </div>
+
+        <!-- Datos del empleado -->
+        <div
+          class="boleta-empleado"
+          style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 12px;
+          "
+        >
+          <div
+            class="emp-avatar"
+            [style.background]="getColor(boletaDetalle.empleado.nombre)"
+            style="
+              width: 52px;
+              height: 52px;
+              font-size: 20px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #fff;
+              font-weight: 700;
+              flex-shrink: 0;
+            "
+          >
+            {{ getIniciales(boletaDetalle.empleado.nombre) }}
+          </div>
+          <div>
+            <div style="font-weight: 700; font-size: 16px">{{ boletaDetalle.empleado.nombre }}</div>
+            <div style="color: #718096; font-size: 13px">{{ boletaDetalle.empleado.cargo }}</div>
+            <div style="color: #a0aec0; font-size: 12px">
+              {{ boletaDetalle.empleado.codigo }} · {{ boletaDetalle.empleado.area }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Asistencia del período -->
+        <div
+          style="
+            background: #ebf8ff;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 14px;
+            font-size: 13px;
+          "
+        >
+          <div style="font-weight: 600; margin-bottom: 6px; color: #2b6cb0">
+            Resumen de Asistencia
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px">
+            <span style="color: #38a169; font-weight: 600"
+              >✓ {{ boletaDetalle.diasPresentes }} presentes</span
+            >
+            <span style="color: #dd6b20; font-weight: 600"
+              >⏰ {{ boletaDetalle.diasTardanza }} tardanzas</span
+            >
+            <span style="color: #e53e3e; font-weight: 600"
+              >✗ {{ boletaDetalle.diasAusente }} ausentes</span
+            >
+          </div>
+          <div style="margin-top: 4px; color: #718096; font-size: 12px">
+            {{ boletaDetalle.diasLaborables }} días laborables del período ·
+            {{ boletaDetalle.totalMinutosTardanza }} min. de tardanza acumulados
+          </div>
+        </div>
+
+        <!-- Tabla de haberes y descuentos -->
+        <div class="boleta-rows" style="margin-bottom: 14px">
+          <div
+            class="boleta-row"
+            style="
+              display: flex;
+              justify-content: space-between;
+              padding: 7px 0;
+              border-bottom: 1px solid #edf2f7;
+              font-size: 14px;
+            "
+          >
+            <span style="color: #4a5568">Salario Base</span>
+            <span style="font-weight: 600">{{ formatMoney(boletaDetalle.salarioBase) }}</span>
+          </div>
+
+          <div
+            *ngIf="boletaDetalle.bonificacion > 0"
+            class="boleta-row"
+            style="
+              display: flex;
+              justify-content: space-between;
+              padding: 7px 0;
+              border-bottom: 1px solid #edf2f7;
+              font-size: 14px;
+            "
+          >
+            <span style="color: #4a5568">Bonificación</span>
+            <span style="color: #38a169; font-weight: 600"
+              >+ {{ formatMoney(boletaDetalle.bonificacion) }}</span
+            >
+          </div>
+
+          <div
+            class="boleta-row"
+            style="
+              display: flex;
+              justify-content: space-between;
+              padding: 7px 0;
+              border-bottom: 1px solid #edf2f7;
+              font-size: 14px;
+            "
+          >
+            <span style="color: #4a5568">AFP (10% del salario base)</span>
+            <span style="color: #e53e3e; font-weight: 600"
+              >- {{ formatMoney(boletaDetalle.descuentoAfp) }}</span
+            >
+          </div>
+
+          <div
+            *ngIf="boletaDetalle.descuentoFaltas > 0"
+            class="boleta-row"
+            style="
+              display: flex;
+              justify-content: space-between;
+              padding: 7px 0;
+              border-bottom: 1px solid #edf2f7;
+              font-size: 14px;
+            "
+          >
+            <span style="color: #4a5568"
+              >Descuento por Faltas ({{ boletaDetalle.diasAusente }} días)</span
+            >
+            <span style="color: #e53e3e; font-weight: 600"
+              >- {{ formatMoney(boletaDetalle.descuentoFaltas) }}</span
+            >
+          </div>
+
+          <div
+            *ngIf="boletaDetalle.descuentoTardanzas > 0"
+            class="boleta-row"
+            style="
+              display: flex;
+              justify-content: space-between;
+              padding: 7px 0;
+              border-bottom: 1px solid #edf2f7;
+              font-size: 14px;
+            "
+          >
+            <span style="color: #4a5568"
+              >Descuento por Tardanzas ({{ boletaDetalle.totalMinutosTardanza }} min)</span
+            >
+            <span style="color: #e53e3e; font-weight: 600"
+              >- {{ formatMoney(boletaDetalle.descuentoTardanzas) }}</span
+            >
+          </div>
+
+          <!-- Total neto destacado -->
+          <div
+            class="boleta-total"
+            style="
+              display: flex;
+              justify-content: space-between;
+              padding: 12px 0;
+              margin-top: 4px;
+              font-size: 16px;
+              border-top: 2px solid #1a365d;
+            "
+          >
+            <span style="font-weight: 800; color: #1a365d">TOTAL NETO A PAGAR</span>
+            <span style="font-weight: 800; color: #1a365d; font-size: 18px">{{
+              formatMoney(boletaDetalle.sueldoNeto)
+            }}</span>
+          </div>
+        </div>
+
+        <!-- Estado de pago -->
+        <div style="text-align: center; padding-top: 10px; border-top: 1px dashed #cbd5e0">
+          <ng-container *ngIf="getPagoDeDetalle(boletaDetalle) as pago">
+            <span
+              style="
+                display: inline-block;
+                background: #c6f6d5;
+                color: #22543d;
+                padding: 4px 14px;
+                border-radius: 20px;
+                font-weight: 700;
+                font-size: 13px;
+              "
+            >
+              ✔ PAGADO
+            </span>
+            <div style="font-size: 12px; color: #718096; margin-top: 6px">
+              {{ pago.metodoPago }}
+              <span *ngIf="pago.numeroOperacion"> · Ref: {{ pago.numeroOperacion }}</span>
+              · {{ pago.fechaPago | date: 'dd/MM/yyyy HH:mm' }}
+            </div>
+          </ng-container>
+          <ng-container *ngIf="!getPagoDeDetalle(boletaDetalle)">
+            <span
+              style="
+                display: inline-block;
+                background: #feebc8;
+                color: #7b341e;
+                padding: 4px 14px;
+                border-radius: 20px;
+                font-weight: 700;
+                font-size: 13px;
+              "
+            >
+              ⏳ PENDIENTE DE PAGO
+            </span>
+          </ng-container>
+        </div>
+
+        <!-- Pie de página de la boleta -->
+        <div
+          style="
+            margin-top: 16px;
+            text-align: center;
+            font-size: 10px;
+            color: #a0aec0;
+            border-top: 1px solid #edf2f7;
+            padding-top: 10px;
+          "
+        >
+          Documento generado el {{ hoy() }} · Sistema ERP Siderúrgica Perú
+        </div>
+      </div>
+      <!-- /#boletaRef — fin de la zona capturada para PDF -->
+
+      <!-- Botones fuera del área capturada -->
+      <div class="modal-footer" style="margin-top: 16px">
+        <button class="btn btn-secondary" (click)="closeModal()">Cerrar</button>
+        <button
+          class="btn btn-primary"
+          (click)="descargarPdf()"
+          [disabled]="descargandoPdf"
+          style="display: flex; align-items: center; gap: 6px"
+        >
+          <span *ngIf="descargandoPdf">⏳ Generando PDF…</span>
+          <span *ngIf="!descargandoPdf">⬇ Descargar PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" [class.visible]="toastVisible" [class.toast-error]="toastType === 'error'">
+  {{ toastMsg }}
+</div>

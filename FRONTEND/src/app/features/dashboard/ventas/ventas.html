@@ -1,0 +1,289 @@
+<!-- src/app/features/dashboard/ventas/ventas.html -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Ventas</h2>
+    <p>Administre y controle todas las operaciones comerciales</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-secondary" (click)="cargarVentas()">Actualizar</button>
+  </div>
+</div>
+
+<div class="summary-strip">
+  <div class="summary-item">
+    <div class="val">{{ formatMoney(getVentasTotales()) }}</div>
+    <div class="lbl">Ventas Totales</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #dd6b20">{{ getVentasPendientes() }}</div>
+    <div class="lbl">Pendientes</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #2b6cb0">{{ getVentasAprobadas() }}</div>
+    <div class="lbl">Aprobadas</div>
+  </div>
+  <div class="summary-item">
+    <div class="val" style="color: #38a169">{{ getVentasCompletadas() }}</div>
+    <div class="lbl">Completadas</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="filters-row">
+    <div class="search-input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input
+        type="text"
+        placeholder="Buscar por código, cliente, RUC o producto..."
+        [(ngModel)]="ventaSearch"
+      />
+    </div>
+    <select class="filter-select" [(ngModel)]="ventaFiltroEstado">
+      <option value="">Todos los estados</option>
+      <option value="PENDIENTE">PENDIENTE</option>
+      <option value="APROBADO">APROBADO</option>
+      <option value="COMPLETADO">COMPLETADO</option>
+      <option value="ANULADO">ANULADO</option>
+    </select>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Cliente</th>
+        <th>Producto</th>
+        <th>Cant.</th>
+        <th>Subtotal</th>
+        <th>IGV</th>
+        <th>Total</th>
+        <th>Vendedor</th>
+        <th>Fecha</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngIf="loadingVentas">
+        <td colspan="11" class="empty-row">Cargando ventas...</td>
+      </tr>
+
+      <tr *ngFor="let v of ventasFiltradas">
+        <td>
+          <strong>{{ v.codigo }}</strong>
+        </td>
+        <td>
+          <div class="td-main">{{ v.cliente }}</div>
+          <div class="td-sub">RUC: {{ v.ruc || '—' }}</div>
+        </td>
+        <td>{{ v.producto }}</td>
+        <td class="text-center">{{ v.cantidad }}</td>
+        <td>{{ formatMoney(+(v.subtotal || 0)) }}</td>
+        <td>{{ formatMoney(+(v.igv || 0)) }}</td>
+        <td>
+          <strong>{{ formatMoney(+(v.total || 0)) }}</strong>
+        </td>
+        <td>{{ v.vendedor || '—' }}</td>
+        <td>{{ formatDate(v.fechaVenta) }}</td>
+        <td>
+          <span class="badge" [class]="getBadgeClass(v.estado || '')">{{ v.estado }}</span>
+        </td>
+        <td>
+          <div class="action-col">
+            <button class="btn btn-ghost btn-sm" (click)="openModalVer(v)">Ver</button>
+
+            <!-- PENDIENTE: Aprobar o Anular -->
+            <ng-container *ngIf="v.estado === 'PENDIENTE'">
+              <button
+                class="btn btn-success btn-sm"
+                [disabled]="loadingAction"
+                (click)="aprobarVenta(v)"
+              >
+                ✓ Aprobar
+              </button>
+              <button
+                class="btn btn-danger btn-sm"
+                [disabled]="loadingAction"
+                (click)="anularVenta(v)"
+              >
+                ✕ Anular
+              </button>
+            </ng-container>
+
+            <!-- APROBADO: Generar Despacho o Anular -->
+            <ng-container *ngIf="v.estado === 'APROBADO'">
+              <button
+                class="btn btn-primary btn-sm"
+                [disabled]="loadingAction"
+                (click)="generarDespacho(v)"
+              >
+                🚚 Despacho
+              </button>
+              <button
+                class="btn btn-danger btn-sm"
+                [disabled]="loadingAction"
+                (click)="anularVenta(v)"
+              >
+                ✕ Anular
+              </button>
+            </ng-container>
+
+            <!-- COMPLETADO / ANULADO -->
+            <span *ngIf="v.estado === 'COMPLETADO' || v.estado === 'ANULADO'" class="td-sub"
+              >—</span
+            >
+          </div>
+        </td>
+      </tr>
+
+      <tr *ngIf="!loadingVentas && ventasFiltradas.length === 0">
+        <td colspan="11" class="empty-row">No se encontraron ventas</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════ MODAL ══════════════════ -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Detalle de Venta</h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <!-- ── VER ── -->
+    <div *ngIf="modalMode === 'ver'" class="modal-body">
+      <!-- Encabezado de estado dentro del modal -->
+      <div class="venta-estado-header">
+        <span class="badge badge-lg" [class]="getBadgeClass(ventaForm.estado || '')">
+          {{ ventaForm.estado }}
+        </span>
+        <span class="venta-codigo-modal">{{ ventaForm.codigo }}</span>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Cliente</div>
+          <div class="detail-val">{{ ventaForm.cliente }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">RUC</div>
+          <div class="detail-val">{{ ventaForm.ruc || '—' }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Producto</div>
+          <div class="detail-val">{{ ventaForm.producto }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Cantidad</div>
+          <div class="detail-val">{{ ventaForm.cantidad }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Precio Unitario</div>
+          <div class="detail-val">
+            {{ formatMoney(+(ventaForm.precioUnitario || ventaForm.precio_unitario || 0)) }}
+          </div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Subtotal</div>
+          <div class="detail-val">{{ formatMoney(+(ventaForm.subtotal || 0)) }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">IGV (18%)</div>
+          <div class="detail-val">{{ formatMoney(+(ventaForm.igv || 0)) }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Total</div>
+          <div class="detail-val detail-val-total">
+            <strong>{{ formatMoney(+(ventaForm.total || 0)) }}</strong>
+          </div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Vendedor</div>
+          <div class="detail-val">{{ ventaForm.vendedor || '—' }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Fecha</div>
+          <div class="detail-val">{{ formatDate(ventaForm.fechaVenta) }}</div>
+        </div>
+      </div>
+
+      <!-- Acciones contextuales según estado -->
+      <
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cerrar</button>
+
+        <ng-container *ngIf="ventaForm.estado === 'PENDIENTE'">
+          <button
+            class="btn btn-success"
+            [disabled]="loadingAction"
+            (click)="onAprobarVentaModal()"
+          >
+            ✓ Aprobar Venta
+          </button>
+          <button class="btn btn-danger" [disabled]="loadingAction" (click)="onAnularVentaModal()">
+            ✕ Anular
+          </button>
+        </ng-container>
+
+        <ng-container *ngIf="ventaForm.estado === 'APROBADO'">
+          <button
+            class="btn btn-primary"
+            [disabled]="loadingAction"
+            (click)="onGenerarDespachoModal()"
+          >
+            🚚 Generar Despacho
+          </button>
+          <button class="btn btn-danger" [disabled]="loadingAction" (click)="onAnularVentaModal()">
+            ✕ Anular
+          </button>
+        </ng-container>
+      </div>
+
+      <!-- Toast -->
+      <div
+        class="toast"
+        [class.visible]="toastVisible"
+        [class.toast-error]="toastType === 'error'"
+        [class.toast-info]="toastType === 'info'"
+      >
+        {{ toastMsg }}
+      </div>
+
+      <style>
+        /* ── Encabezado de estado en modal ─────────────────────────── */
+        .venta-estado-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 18px;
+          padding: 10px 14px;
+          background: #f7fafc;
+          border-radius: 8px;
+          border-left: 4px solid #cbd5e0;
+        }
+
+        .badge-lg {
+          font-size: 13px;
+          padding: 5px 14px;
+        }
+
+        .venta-codigo-modal {
+          font-weight: 700;
+          font-size: 15px;
+          color: #2d3748;
+          letter-spacing: 0.5px;
+        }
+
+        /* ── Total destacado en detalle ────────────────────────────── */
+        .detail-val-total strong {
+          font-size: 16px;
+          color: #2b6cb0;
+        }
+      </style>
+    </div>
+  </div>
+</div>

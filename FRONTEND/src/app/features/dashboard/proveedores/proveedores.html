@@ -1,0 +1,257 @@
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Gestión de Proveedores</h2>
+    <p>Directorio y evaluación de proveedores estratégicos</p>
+  </div>
+  <div class="page-header-right">
+    <button class="btn btn-primary" (click)="openModalCrear()">+ Agregar Proveedor</button>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="filters-row">
+    <div class="search-input">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input type="text" placeholder="Buscar proveedor..." [(ngModel)]="provSearch" />
+    </div>
+    <select class="filter-select" [(ngModel)]="provFiltroEstado">
+      <option value="">Todos</option>
+      <option>Activo</option>
+      <option>Inactivo</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Proveedor</th>
+        <th>RUC / NIT</th>
+        <th>Contacto</th>
+        <th>Teléfono</th>
+        <th>Categoría</th>
+        <th>Calificación</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let p of proveedoresFiltrados">
+        <td>
+          <div class="td-main">{{ p.nombre }}</div>
+          <div class="td-sub">{{ p.origen }}</div>
+        </td>
+        <td>{{ p.ruc }}</td>
+        <td>{{ p.contacto }}</td>
+        <td>{{ p.telefono }}</td>
+        <td>{{ p.categoria }}</td>
+        <td
+          [style.color]="(p.calificacion ?? 0) >= 4.5 ? '#38A169' : '#D69E2E'"
+          style="font-weight: 700"
+        >
+          ★ {{ p.calificacion }}
+        </td>
+        <td>
+          <span class="badge" [class]="getBadgeClass(p.estado)">{{ p.estado }}</span>
+        </td>
+        <td>
+          <div class="action-col">
+            <button class="btn btn-ghost btn-sm" (click)="openModalVer(p)">Ver</button>
+            <button class="btn btn-secondary btn-sm" (click)="openModalEditar(p)">Editar</button>
+            <button class="btn btn-danger btn-sm" (click)="pedirEliminar(p)">✕</button>
+          </div>
+        </td>
+      </tr>
+      <tr *ngIf="proveedoresFiltrados.length === 0">
+        <td colspan="8" class="empty-row">No se encontraron resultados</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        {{
+          modalMode === 'crear'
+            ? 'Nuevo Proveedor'
+            : modalMode === 'editar'
+              ? 'Editar Proveedor'
+              : modalMode === 'eliminar'
+                ? 'Confirmar Eliminación'
+                : 'Detalle de Proveedor'
+        }}
+      </h3>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <!-- ══ CREAR / EDITAR — Reactive Form ══ -->
+    <div *ngIf="modalMode === 'crear' || modalMode === 'editar'" class="modal-body">
+      <form [formGroup]="form" novalidate>
+        <div class="form-grid">
+          <!-- Nombre -->
+          <div class="form-field">
+            <label>Nombre <span style="color: red">*</span></label>
+            <input
+              type="text"
+              formControlName="nombre"
+              [class.is-invalid]="isInvalid('nombre')"
+              placeholder="Nombre de la empresa"
+            />
+            <div class="invalid-feedback" *ngIf="isInvalid('nombre')">
+              {{ errorMsg('nombre', 'Nombre') }}
+            </div>
+          </div>
+
+          <!-- RUC -->
+          <div class="form-field">
+            <label>RUC / NIT <span style="color: red">*</span></label>
+            <input
+              type="text"
+              formControlName="ruc"
+              [class.is-invalid]="isInvalid('ruc')"
+              maxlength="11"
+              placeholder="11 dígitos"
+              (input)="soloNumeros($event, 'ruc')"
+            />
+            <div class="invalid-feedback" *ngIf="isInvalid('ruc')">
+              {{ errorMsg('ruc', 'RUC') }}
+            </div>
+          </div>
+
+          <!-- Origen -->
+          <div class="form-field">
+            <label>Origen</label>
+            <input type="text" formControlName="origen" placeholder="Ciudad, País" />
+          </div>
+
+          <!-- Contacto -->
+          <div class="form-field">
+            <label>Contacto</label>
+            <input type="text" formControlName="contacto" placeholder="Nombre del contacto" />
+          </div>
+
+          <!-- Teléfono -->
+          <div class="form-field">
+            <label>Teléfono</label>
+            <input
+              type="text"
+              formControlName="telefono"
+              [class.is-invalid]="isInvalid('telefono')"
+              maxlength="9"
+              placeholder="9 dígitos"
+              (input)="soloNumeros($event, 'telefono')"
+            />
+            <div class="invalid-feedback" *ngIf="isInvalid('telefono')">
+              {{ errorMsg('telefono', 'Teléfono') }}
+            </div>
+          </div>
+
+          <!-- Categoría -->
+          <div class="form-field">
+            <label>Categoría</label>
+            <input type="text" formControlName="categoria" placeholder="Ej: Acero primario" />
+          </div>
+
+          <!-- Calificación -->
+          <div class="form-field">
+            <label>Calificación (1-5)</label>
+            <input
+              type="number"
+              formControlName="calificacion"
+              [class.is-invalid]="isInvalid('calificacion')"
+              min="1"
+              max="5"
+              step="0.1"
+            />
+            <div class="invalid-feedback" *ngIf="isInvalid('calificacion')">
+              {{ errorMsg('calificacion', 'Calificación') }}
+            </div>
+          </div>
+
+          <!-- Estado -->
+          <div class="form-field">
+            <label>Estado</label>
+            <select formControlName="estado">
+              <option>Activo</option>
+              <option>Inactivo</option>
+            </select>
+          </div>
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="guardarProveedor()">
+          {{ modalMode === 'crear' ? 'Agregar Proveedor' : 'Guardar Cambios' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ VER (sin cambios) ══ -->
+    <div *ngIf="modalMode === 'ver'" class="modal-body">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Nombre</div>
+          <div class="detail-val">{{ proveedorForm.nombre }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">RUC / NIT</div>
+          <div class="detail-val">{{ proveedorForm.ruc }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Origen</div>
+          <div class="detail-val">{{ proveedorForm.origen }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Contacto</div>
+          <div class="detail-val">{{ proveedorForm.contacto }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Teléfono</div>
+          <div class="detail-val">{{ proveedorForm.telefono }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Categoría</div>
+          <div class="detail-val">{{ proveedorForm.categoria }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Calificación</div>
+          <div class="detail-val" style="color: #38a169; font-weight: 700">
+            ★ {{ proveedorForm.calificacion }}
+          </div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Estado</div>
+          <div class="detail-val">
+            <span class="badge" [class]="getBadgeClass(proveedorForm.estado || '')">{{
+              proveedorForm.estado
+            }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cerrar</button>
+        <button class="btn btn-primary" (click)="openModalEditar(proveedorForm)">Editar</button>
+      </div>
+    </div>
+
+    <!-- ══ ELIMINAR (sin cambios) ══ -->
+    <div *ngIf="modalMode === 'eliminar'" class="modal-body">
+      <div class="delete-warning">
+        <div class="delete-icon">⚠️</div>
+        <p>¿Está seguro?<br /><strong>Esta acción no se puede deshacer.</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+        <button class="btn btn-danger" (click)="confirmarEliminar()">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" [class.visible]="toastVisible" [class.toast-error]="toastType === 'error'">
+  {{ toastMsg }}
+</div>

@@ -1,0 +1,571 @@
+<div class="erp-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Siderúrgica Perú</h1>
+          <span>ERP System</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section" *ngIf="puedeVer('dashboard')">
+        <div class="nav-section-label">General</div>
+        <div
+          class="nav-item"
+          [class.active]="activeView === 'dashboard'"
+          (click)="showView('dashboard')"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+          </svg>
+          <span>Dashboard</span>
+        </div>
+      </div>
+
+      <div
+        class="nav-section"
+        *ngIf="puedeVerAlguno(['ventas', 'cotizaciones', 'pedidos', 'despacho'])"
+      >
+        <div class="nav-section-label">Comercial</div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('ventas')"
+          [class.active]="activeView === 'ventas'"
+          (click)="showView('ventas')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23" />
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+          <span>Gestión de Ventas</span>
+        </div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('cotizaciones')"
+          [class.active]="activeView === 'cotizaciones'"
+          (click)="showView('cotizaciones')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <line x1="10" y1="9" x2="8" y2="9" />
+          </svg>
+          <span>Gestión de Cotizaciones</span>
+        </div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('pedidos')"
+          [class.active]="activeView === 'pedidos'"
+          (click)="showView('pedidos')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          <span>Gestión de Pedidos</span>
+        </div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('despacho')"
+          [class.active]="activeView === 'despacho'"
+          (click)="showView('despacho')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="3" width="15" height="13" />
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+            <circle cx="5.5" cy="18.5" r="2.5" />
+            <circle cx="18.5" cy="18.5" r="2.5" />
+          </svg>
+          <span>Gestión de Despacho</span>
+        </div>
+      </div>
+
+      <div
+        class="nav-section"
+        *ngIf="puedeVerAlguno(['inventario', 'abastecimiento', 'proveedores'])"
+      >
+        <div class="nav-section-label">Operaciones</div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('inventario')"
+          [class.active]="activeView === 'inventario'"
+          (click)="showView('inventario')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+            />
+          </svg>
+          <span>Inventario</span>
+        </div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('abastecimiento')"
+          [class.active]="activeView === 'abastecimiento'"
+          (click)="showView('abastecimiento')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1" />
+            <circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+          </svg>
+          <span>Abastecimiento</span>
+        </div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('proveedores')"
+          [class.active]="activeView === 'proveedores'"
+          (click)="showView('proveedores')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span>Proveedores</span>
+        </div>
+      </div>
+
+      <div class="nav-section" *ngIf="puedeVerAlguno(['rrhh', 'planillas'])">
+        <div class="nav-section-label">Recursos Humanos</div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('rrhh')"
+          [class.active]="activeView === 'rrhh'"
+          (click)="showView('rrhh')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span>Gestión de RRHH</span>
+        </div>
+        <div
+          class="nav-item"
+          *ngIf="puedeVer('planillas')"
+          [class.active]="activeView === 'planillas'"
+          (click)="showView('planillas')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+          <span>Planillas</span>
+        </div>
+      </div>
+
+      <div class="nav-section" *ngIf="puedeVer('reportes')">
+        <div class="nav-section-label">Análisis</div>
+        <div
+          class="nav-item"
+          [class.active]="activeView === 'reportes'"
+          (click)="showView('reportes')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+          <span>Reportes</span>
+        </div>
+      </div>
+
+      <div class="nav-section" *ngIf="puedeVer('mantenimiento')">
+        <div class="nav-section-label">Administración</div>
+        <div
+          class="nav-item"
+          [class.active]="activeView === 'mantenimiento'"
+          (click)="showView('mantenimiento')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.4 1v.2a2 2 0 0 1-4 0V21a1.65 1.65 0 0 0-1.4-1.6 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1-.4h-.2a2 2 0 0 1 0-4H3a1.65 1.65 0 0 0 1.6-1.4 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 3.5l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .4-1v-.2a2 2 0 0 1 4 0V3a1.65 1.65 0 0 0 1.4 1.6 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.17.38.54.65.95.73H21a2 2 0 0 1 0 4h-.65a1.65 1.65 0 0 0-.95 1.27z"
+            />
+          </svg>
+          <span>Mantenimiento</span>
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-avatar">
+        {{ (usuarioActual?.username?.charAt(0) || '').toUpperCase() }}
+      </div>
+      <div class="user-info">
+        <div class="user-name">{{ usuarioActual?.username }}</div>
+        <div class="user-role">{{ rolActual }}</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-title">
+        <h2>{{ getCurrentTitle() }}</h2>
+        <p>{{ getCurrentSub() }}</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="topbar-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input type="text" placeholder="Buscar en el sistema..." />
+        </div>
+
+        <!-- Notificaciones -->
+        <div class="notif-wrap">
+          <div class="topbar-btn" (click)="toggleNotif()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <span class="notif-dot" *ngIf="notifNoLeidas > 0">{{ notifNoLeidas }}</span>
+          </div>
+
+          <div class="notif-panel" *ngIf="showNotif">
+            <div class="notif-panel-header">
+              <span class="notif-panel-title">Notificaciones</span>
+              <button class="notif-mark-all" (click)="marcarTodasLeidas()">
+                Marcar todas como leídas
+              </button>
+            </div>
+            <div class="notif-list">
+              <div
+                class="notif-item"
+                *ngFor="let n of notificaciones"
+                [class.no-leida]="!n.leida"
+                (click)="irANotif(n)"
+                style="cursor: pointer"
+              >
+                <div class="notif-icono">{{ n.icono }}</div>
+                <div class="notif-content">
+                  <div class="notif-titulo">{{ n.titulo }}</div>
+                  <div class="notif-msg">{{ n.msg }}</div>
+                  <div class="notif-tiempo">{{ n.tiempo }}</div>
+                </div>
+                <div class="notif-unread-dot" *ngIf="!n.leida"></div>
+              </div>
+            </div>
+            <div class="notif-panel-footer">
+              <button class="btn btn-ghost btn-sm" (click)="cerrarNotif()">Cerrar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="user-avatar" style="width: 36px; height: 36px; font-size: 13px">
+          {{ (usuarioActual?.username?.charAt(0) || '').toUpperCase() }}
+        </div>
+        <button class="btn-logout" (click)="logout()">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            width="16"
+            height="16"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Cerrar sesión
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <!-- ═══ DASHBOARD ═══ -->
+      <div *ngIf="activeView === 'dashboard'">
+        <div class="cards-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <div class="metric-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="1" x2="12" y2="23" />
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+              </div>
+              <span class="metric-trend trend-up">↑ 12.4%</span>
+            </div>
+            <div>
+              <div class="metric-value">S/ 186,450</div>
+              <div class="metric-label">Ventas Totales del Mes</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <div class="metric-icon orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+              </div>
+              <span class="metric-trend trend-down">↓ 3.1%</span>
+            </div>
+            <div>
+              <div class="metric-value">2</div>
+              <div class="metric-label">Pedidos Pendientes</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <div class="metric-icon red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                  />
+                </svg>
+              </div>
+              <span class="metric-trend trend-down">↑ 8 items</span>
+            </div>
+            <div>
+              <div class="metric-value">4</div>
+              <div class="metric-label">SKUs en Inventario</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <div class="metric-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="1" y="3" width="15" height="13" />
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                  <circle cx="5.5" cy="18.5" r="2.5" />
+                  <circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
+              </div>
+              <span class="metric-trend trend-up">↑ 6.7%</span>
+            </div>
+            <div>
+              <div class="metric-value">3</div>
+              <div class="metric-label">Despachos Registrados</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-title">Ventas Mensuales 2026</div>
+            <div class="chart-sub">Ingresos en millones de soles (S/)</div>
+            <div class="bar-chart">
+              <div class="bar-group">
+                <div class="bar" style="height: 55%"></div>
+                <div class="bar-label">Ene</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar" style="height: 68%"></div>
+                <div class="bar-label">Feb</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar" style="height: 72%"></div>
+                <div class="bar-label">Mar</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar" style="height: 60%"></div>
+                <div class="bar-label">Abr</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar" style="height: 82%"></div>
+                <div class="bar-label">May</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar" style="height: 75%"></div>
+                <div class="bar-label">Jun</div>
+              </div>
+              <div class="bar-group">
+                <div class="bar" style="height: 90%; background: #1a365d"></div>
+                <div class="bar-label">Jul</div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Distribución de Inventario</div>
+            <div class="chart-sub">Por categoría de producto</div>
+            <div class="donut-wrap">
+              <svg class="donut-svg" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" stroke-width="18" />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke="#2B6CB0"
+                  stroke-width="18"
+                  stroke-dasharray="145 169"
+                  stroke-dashoffset="0"
+                  transform="rotate(-90 60 60)"
+                />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke="#38A169"
+                  stroke-width="18"
+                  stroke-dasharray="75 239"
+                  stroke-dashoffset="-145"
+                  transform="rotate(-90 60 60)"
+                />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke="#DD6B20"
+                  stroke-width="18"
+                  stroke-dasharray="50 264"
+                  stroke-dashoffset="-220"
+                  transform="rotate(-90 60 60)"
+                />
+                <text
+                  x="60"
+                  y="65"
+                  text-anchor="middle"
+                  font-size="13"
+                  font-weight="800"
+                  fill="#2D3748"
+                  font-family="Inter"
+                >
+                  100%
+                </text>
+              </svg>
+              <div class="donut-legend">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #2b6cb0"></div>
+                  <div class="legend-label">Acero estructural</div>
+                  <div class="legend-pct">45%</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #38a169"></div>
+                  <div class="legend-label">Perfiles laminados</div>
+                  <div class="legend-pct">31%</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #dd6b20"></div>
+                  <div class="legend-label">Barras corrugadas</div>
+                  <div class="legend-pct">24%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-card-header">
+            <div>
+              <div class="table-card-title">Pedidos Recientes</div>
+              <div class="table-card-sub">Últimas 24 horas</div>
+            </div>
+            <div class="table-card-actions">
+              <button class="btn btn-secondary btn-sm">Exportar</button>
+              <button class="btn btn-primary btn-sm" (click)="showView('ventas')">Ver todos</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Producto</th>
+                <th>Total</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>#PED-2847</strong></td>
+                <td>Constructora Lima S.A.</td>
+                <td>Acero estructural A36</td>
+                <td><strong>S/ 48,200</strong></td>
+                <td>Hoy, 09:41</td>
+                <td><span class="badge badge-green">Aprobado</span></td>
+              </tr>
+              <tr>
+                <td><strong>#PED-2846</strong></td>
+                <td>Minera Andina Corp.</td>
+                <td>Barras corrugadas 1"</td>
+                <td><strong>S/ 22,750</strong></td>
+                <td>Hoy, 08:15</td>
+                <td><span class="badge badge-orange">Pendiente</span></td>
+              </tr>
+              <tr>
+                <td><strong>#PED-2845</strong></td>
+                <td>Infraestructura Sur SAC</td>
+                <td>Perfiles H 8x8</td>
+                <td><strong>S/ 91,400</strong></td>
+                <td>Hoy, 07:30</td>
+                <td><span class="badge badge-green">Aprobado</span></td>
+              </tr>
+              <tr>
+                <td><strong>#PED-2844</strong></td>
+                <td>Grupo Constructor Norte</td>
+                <td>Planchas 6mm</td>
+                <td><strong>S/ 15,800</strong></td>
+                <td>Ayer, 18:20</td>
+                <td><span class="badge badge-yellow">En revisión</span></td>
+              </tr>
+              <tr>
+                <td><strong>#PED-2843</strong></td>
+                <td>Desarrollos Urbanos Perú</td>
+                <td>Alambre galvanizado #16</td>
+                <td><strong>S/ 8,300</strong></td>
+                <td>Ayer, 16:45</td>
+                <td><span class="badge badge-red">Rechazado</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- FIN DASHBOARD -->
+
+      <!-- Las funcionalidades se cargan mediante rutas hijas. -->
+      <router-outlet></router-outlet>
+    </div>
+    <!-- /content -->
+  </div>
+  <!-- /main-area -->
+
+  <!-- TOAST -->
+  <div
+    class="toast"
+    [class.visible]="toastVisible"
+    [class.toast-error]="toastType === 'error'"
+    [class.toast-info]="toastType === 'info'"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18">
+      <ng-container *ngIf="toastType === 'success'">
+        <polyline points="20 6 9 17 4 12" />
+      </ng-container>
+      <ng-container *ngIf="toastType === 'error'">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </ng-container>
+      <ng-container *ngIf="toastType === 'info'">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </ng-container>
+    </svg>
+    {{ toastMsg }}
+  </div>
+</div>
