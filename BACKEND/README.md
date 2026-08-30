@@ -1,155 +1,98 @@
-# SigCon Backend — Spring Boot + Spring Security
-## Sprints cubiertos: Sprint 1, Sprint 2, Sprint 3
+# SIGCON Backend
 
----
+API REST del ERP académico Siderúrgica Perú, desarrollada con Spring Boot y Spring Security.
 
-## INSTALACIÓN (desde cero)
+## Despliegue
 
-### 1. Instalar Java 17
-- Descargar: https://adoptium.net/temurin/releases/?version=17
-- Windows x64 → archivo `.msi`
-- Instalar con todos los valores por defecto
-- Verificar: `java -version`
+- API pública: [Railway](https://siderurgica-erp-production.up.railway.app)
+- Frontend: [Vercel](https://siderurgica-erp.vercel.app)
+- Base de datos: PostgreSQL administrado en Neon
+- Estado: desplegado con fines académicos y de portafolio
 
-### 2. Instalar Maven
-- Descargar: https://maven.apache.org/download.cgi
-- Elegir: **Binary zip archive** (`apache-maven-3.9.16-bin.zip`)
-- Descomprimir en `C:\Program Files\Apache\maven`
-- Agregar a variables de entorno del sistema:
-  - Variable nueva: `MAVEN_HOME` = `C:\Program Files\Apache\maven`
-  - En `Path` agregar: `%MAVEN_HOME%\bin`
-- Verificar: `mvn -version`
+La raíz del API no contiene una página pública. Los endpoints protegidos requieren un access token JWT.
 
----
+## Tecnologías
 
-## CONFIGURACIÓN
+- Java 17
+- Spring Boot 3.2
+- Spring Security y JWT
+- Spring Data JPA
+- PostgreSQL
+- Maven
+- Docker
 
-### application.properties (ya configurado con tu .env)
-```
-siderurgica_db / postgres / aeamongol123 / puerto 5432
-```
-Archivo: `src/main/resources/application.properties`
+## Ejecución local
 
----
+Define las variables requeridas y ejecuta:
 
-## ⚠️ PASO OBLIGATORIO: Migrar passwords a BCrypt
+```powershell
+$env:DB_URL="jdbc:postgresql://HOST/BASE_DE_DATOS?sslmode=require"
+$env:DB_USERNAME="USUARIO"
+$env:DB_PASSWORD="CONTRASENA"
+$env:JWT_SECRET="SECRETO_DE_AL_MENOS_32_CARACTERES"
+$env:CORS_ALLOWED_ORIGINS="http://localhost:4200"
+$env:AUTH_COOKIE_SECURE="false"
 
-Spring Security NO puede verificar passwords en texto plano.
-Debes encriptar los passwords de tu tabla `seguridad.usuario`.
-
-**Opción A — Usar el SQL incluido:**
-Abrir `migrar-passwords-bcrypt.sql` en pgAdmin y ejecutarlo.
-Edita los UPDATE según tus usuarios reales.
-
-**Opción B — Generar BCrypt manualmente:**
-Usar https://bcrypt-generator.com (rounds = 10)
-Copiar el hash y hacer UPDATE directo en pgAdmin.
-
----
-
-## EJECUTAR
-
-```bash
-# En la carpeta del proyecto (donde está pom.xml):
 mvn spring-boot:run
 ```
 
-Primera vez: descarga dependencias (~2 min). Luego es rápido.
+El servidor local estará disponible en `http://localhost:3000`.
 
-Servidor listo cuando veas:
-```
-Started Application in X.XXX seconds
-```
-URL: http://localhost:3000
+## Variables de producción
 
----
+| Variable | Descripción |
+|---|---|
+| `DB_URL` | URL JDBC de PostgreSQL con SSL |
+| `DB_USERNAME` | Usuario de PostgreSQL |
+| `DB_PASSWORD` | Contraseña de PostgreSQL |
+| `JWT_SECRET` | Clave para firmar tokens JWT |
+| `JWT_EXPIRATION` | Vigencia del access token en milisegundos |
+| `JWT_REFRESH_EXPIRATION` | Vigencia del refresh token en milisegundos |
+| `CORS_ALLOWED_ORIGINS` | Origen autorizado del frontend |
+| `AUTH_COOKIE_SECURE` | Activa cookies `Secure` en HTTPS |
+| `PORT` | Puerto proporcionado por la plataforma |
 
-## ENDPOINTS
+Las credenciales se configuran exclusivamente como variables privadas de Railway. No deben guardarse en GitHub.
 
-| Método | Endpoint | Auth | Sprint |
-|--------|----------|------|--------|
-| POST | /login | ❌ Público | Sprint 1 |
-| GET | /cotizaciones | ✅ VENDEDOR/ADMIN | Sprint 2 |
-| POST | /cotizaciones | ✅ VENDEDOR/ADMIN | Sprint 2 |
-| PATCH | /cotizaciones/:id/estado | ✅ VENDEDOR/ADMIN | Sprint 2 |
-| GET | /pedidos | ✅ VENDEDOR/ADMIN | Sprint 3 |
-| POST | /pedidos | ✅ VENDEDOR/ADMIN | Sprint 3 |
-| PATCH | /pedidos/:id/estado | ✅ VENDEDOR/ADMIN | Sprint 3 |
+## Seguridad
 
----
+- Contraseñas almacenadas con BCrypt.
+- Autenticación mediante access token y refresh token.
+- Refresh token almacenado en una cookie `HttpOnly` y `Secure` en producción.
+- Autorización por roles: `ADMIN`, `VENTAS`, `ALMACEN`, `RRHH` y `CONSULTA`.
+- CORS restringido al dominio configurado.
 
-## CÓMO FUNCIONA SPRING SECURITY (para sustentación)
+## Pruebas y compilación
 
-```
-Angular POST /login
-       ↓
-AuthController recibe { username, password }
-       ↓
-AuthenticationManager (Spring Security)
-       ↓
-CustomUserDetailsService.loadUserByUsername()
-       ↓ carga usuario de BD
-BCryptPasswordEncoder.matches(password, hash)
-       ↓ verifica password
-Si OK → devuelve { success, usuario: { id, username, rol, estado } }
-Si falla → 401 Unauthorized
+```bash
+mvn test
+mvn clean package
 ```
 
-Para /cotizaciones y /pedidos, Spring Security verifica
-automáticamente que el usuario tenga rol VENDEDOR o ADMIN.
+## Estructura
 
----
-
-## ESTRUCTURA DEL PROYECTO
-
-```
-sigconbackend/
-├── pom.xml
-├── migrar-passwords-bcrypt.sql   ← EJECUTAR ANTES DE INICIAR
-└── src/main/
-    ├── resources/
-    │   └── application.properties
-    └── java/dsw/sigconbackend/
-        ├── Application.java
-        ├── security/
-        │   ├── SecurityConfig.java          ← HU02: reglas de acceso
-        │   └── CustomUserDetailsService.java← HU02: carga usuario de BD
-        ├── controller/
-        │   ├── AuthController.java          ← POST /login
-        │   ├── CotizacionController.java    ← HU03, HU05
-        │   └── PedidoController.java        ← HU06
-        ├── service/
-        │   ├── AuthService.java             ← HU02
-        │   ├── CotizacionService.java       ← HU03, HU04, HU05
-        │   └── PedidoService.java           ← HU06, HU07
-        ├── repository/
-        │   ├── UsuarioRepository.java
-        │   ├── CotizacionRepository.java
-        │   └── PedidoRepository.java
-        ├── model/
-        │   ├── Usuario.java
-        │   ├── Rol.java
-        │   ├── Cotizacion.java
-        │   └── Pedido.java
-        └── dto/
-            ├── LoginRequest.java
-            ├── LoginResponse.java
-            ├── CotizacionRequest.java
-            ├── PedidoRequest.java
-            └── EstadoRequest.java
+```text
+src/main/java/dsw/sigconbackend/
+├── controller/   # endpoints REST
+├── dto/          # objetos de entrada y salida
+├── exception/    # manejo centralizado de errores
+├── model/        # entidades JPA
+├── repository/   # acceso a PostgreSQL
+├── security/     # JWT, filtros y reglas por rol
+└── service/      # lógica del negocio
 ```
 
----
+## Despliegue en Railway
 
-## COBERTURA POR HISTORIA DE USUARIO
+El repositorio contiene un `Dockerfile`. En Railway se utiliza:
 
-| HU | Descripción | Archivo |
-|----|-------------|---------|
-| HU01 | Sistema base e infraestructura | `Application.java`, `application.properties`, `pom.xml` |
-| HU02 | Autenticación y acceso | `SecurityConfig.java`, `CustomUserDetailsService.java`, `AuthService.java` |
-| HU03 | Registrar cotización | `CotizacionService.registrarCotizacion()` |
-| HU04 | Calcular descuentos automáticamente | `CotizacionService.calcularDescuento()` |
-| HU05 | Consultar cotizaciones | `CotizacionService.listarCotizaciones()` |
-| HU06 | Registrar pedido de venta | `PedidoService.registrarPedido()` |
-| HU07 | Validar cliente en venta | `PedidoService.registrarPedido()` (validaciones) |
-| HU08 | Generar comprobante de pago | Pendiente — próximo sprint |
+```text
+Root Directory: /BACKEND
+Builder: Dockerfile
+```
+
+Cada cambio enviado a la rama `main` genera un nuevo despliegue automático.
+
+## Alcance académico
+
+Proyecto desarrollado para el curso de Desarrollo Web del séptimo ciclo. Es una demostración académica y no representa un sistema productivo oficial.
