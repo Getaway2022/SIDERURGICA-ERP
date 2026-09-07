@@ -1,4 +1,5 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -50,8 +51,14 @@ export class LoginComponent {
         next: () => {
           this.router.navigate(['/dashboard']);
         },
-        error: (err) => {
-          this.errorMsg = err.error?.mensaje || 'Credenciales incorrectas. Intente nuevamente.';
+        error: (err: HttpErrorResponse) => {
+          if (err.status === 0) {
+            this.errorMsg = 'No se pudo conectar con el servidor. Intente nuevamente más tarde.';
+          } else if (err.status === 401) {
+            this.errorMsg = 'Credenciales incorrectas. Intente nuevamente.';
+          } else {
+            this.errorMsg = 'No se pudo iniciar sesión. Intente nuevamente más tarde.';
+          }
           this.cdr.detectChanges();
         },
       });
