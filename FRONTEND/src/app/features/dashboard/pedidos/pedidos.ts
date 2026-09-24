@@ -89,7 +89,7 @@ export class PedidosComponent implements OnInit {
     const control = this.form.get(campo);
     if (!control || !control.errors || !(control.touched || control.dirty)) return '';
     if (campo === 'cantidad' && control.errors['max']) {
-      return `Stock disponible: ${this.productoSeleccionado?.stock ?? 0} ${this.productoSeleccionado?.unidad ?? 'unidades'}`;
+      return `Stock disponible: ${this.productoSeleccionado?.stockDisponible ?? this.productoSeleccionado?.stock ?? 0} ${this.productoSeleccionado?.unidad ?? 'unidades'}`;
     }
     if (campo === 'cantidad' && control.errors['min']) {
       return 'La cantidad debe ser mayor a 0.';
@@ -100,7 +100,7 @@ export class PedidosComponent implements OnInit {
   cargarInventario() {
     this.inventarioService.listarInventario().subscribe({
       next: (data) => {
-        this.productosInventario = data.filter((p) => p.stock > 0);
+        this.productosInventario = data.filter((p) => (p.stockDisponible ?? p.stock) > 0);
         this.productosFiltrados = [...this.productosInventario];
       },
       error: () => {},
@@ -129,7 +129,7 @@ export class PedidosComponent implements OnInit {
     this.productoSearch = p.producto;
     this.form.get('producto')?.setValue(p.producto);
     this.form.get('precio_unitario')?.setValue(p.precioUnitario || p.precio_unitario || 0);
-    this._actualizarMaxCantidad(p.stock);
+    this._actualizarMaxCantidad(p.stockDisponible ?? p.stock);
     this.showDropdownProducto = false;
     this.cdr.detectChanges();
   }
@@ -212,6 +212,7 @@ export class PedidosComponent implements OnInit {
       cliente: val.cliente,
       ruc: val.ruc || '',
       producto: val.producto,
+      inventarioId: this.productoSeleccionado?.id,
       cantidad: Number(val.cantidad),
       precio_unitario: Number(val.precio_unitario),
       usuario_id: this.usuarioActual?.id || null,
@@ -244,12 +245,12 @@ export class PedidosComponent implements OnInit {
           // DEF-09 — alerta de bajo stock visible claramente
           if (res.bajoPstock) {
             this.showToast(
-              `✅ Pedido ${pedidoActualizado.codigo} aprobado. ⚠️ Stock de "${p.producto}" quedó por debajo del mínimo.`,
+              `Pedido ${pedidoActualizado.codigo}: stock reservado y venta pendiente creada. Stock disponible en el mínimo; se evaluó reposición.`,
               'info',
             );
           } else {
             this.showToast(
-              `✅ Pedido ${pedidoActualizado.codigo} aprobado. Stock actualizado correctamente.`,
+              `Pedido ${pedidoActualizado.codigo}: stock reservado y venta pendiente creada.`,
               'success',
             );
           }

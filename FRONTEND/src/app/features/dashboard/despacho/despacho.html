@@ -4,7 +4,7 @@
     <p>Control de envíos y confirmación de entregas</p>
   </div>
   <div class="page-header-right">
-    <button class="btn btn-primary" (click)="openModalCrear()">+ Nuevo Despacho</button>
+    <span>Los despachos se generan al aprobar una venta.</span>
   </div>
 </div>
 
@@ -89,20 +89,32 @@
             </button>
             <button
               class="btn btn-secondary btn-sm"
-              *ngIf="(d.estado === 'PREPARADO' || d.estado === 'ENVIADO') && !d.comprobanteValidado"
+              *ngIf="d.estado === 'PREPARADO'"
               (click)="abrirComprobante(d)"
             >
-              Validar Comprobante
+              Validar comprobante y enviar
             </button>
             <button
               class="btn btn-success btn-sm"
-              *ngIf="d.estado !== 'ENTREGADO' && d.comprobanteValidado"
+              *ngIf="d.estado === 'ENVIADO' && d.comprobanteValidado"
               (click)="confirmarEntrega(d)"
             >
               ✓ Confirmar Entrega
             </button>
-            <button class="btn btn-ghost btn-sm" (click)="openModalEditar(d)">Editar</button>
-            <button class="btn btn-danger btn-sm" (click)="pedirEliminar(d)">✕</button>
+            <button
+              *ngIf="d.estado === 'PENDIENTE' || d.estado === 'PREPARADO'"
+              class="btn btn-ghost btn-sm"
+              (click)="openModalEditar(d)"
+            >
+              Editar
+            </button>
+            <button
+              *ngIf="d.estado === 'PENDIENTE' || d.estado === 'PREPARADO'"
+              class="btn btn-danger btn-sm"
+              (click)="pedirEliminar(d)"
+            >
+              Anular
+            </button>
           </div>
         </td>
       </tr>
@@ -130,6 +142,7 @@
               <input
                 type="text"
                 formControlName="cliente"
+                readonly
                 [class.is-invalid]="isInvalid('cliente')"
                 placeholder="Nombre del cliente"
               />
@@ -144,6 +157,7 @@
               <input
                 type="text"
                 formControlName="producto"
+                readonly
                 [class.is-invalid]="isInvalid('producto')"
                 placeholder="Producto a despachar"
               />
@@ -201,7 +215,7 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
-          <button class="btn btn-primary" (click)="validarComprobante()">Validar</button>
+          <button class="btn btn-primary" (click)="validarComprobante()">Validar y enviar</button>
         </div>
       </div>
     </div>
@@ -209,17 +223,22 @@
     <!-- ══ ELIMINAR — sin cambios ══ -->
     <div *ngIf="modalMode === 'eliminar'">
       <div class="modal-header">
-        <h3>Confirmar Eliminación</h3>
+        <h3>Confirmar anulación</h3>
         <button class="modal-close" (click)="closeModal()">✕</button>
       </div>
       <div class="modal-body">
         <div class="delete-warning">
           <div class="delete-icon">⚠️</div>
-          <p>¿Está seguro?<br /><strong>Esta acción no se puede deshacer.</strong></p>
+          <p>
+            Se anularán el despacho, la venta y el pedido asociados y se liberará la reserva de
+            stock.
+          </p>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
-          <button class="btn btn-danger" (click)="confirmarEliminar()">Sí, eliminar</button>
+          <button class="btn btn-danger" (click)="confirmarEliminar()">
+            Sí, anular y liberar reserva
+          </button>
         </div>
       </div>
     </div>

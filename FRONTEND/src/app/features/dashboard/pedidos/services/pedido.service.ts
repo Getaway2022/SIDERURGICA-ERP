@@ -15,6 +15,8 @@ export interface Pedido {
   igv?: number;
   total?: number;
   estado?: string;
+  estadoStock?: string;
+  inventarioId?: number;
   vendedor?: string;
   usuario_id?: number | null;
   fecha_registro?: string;

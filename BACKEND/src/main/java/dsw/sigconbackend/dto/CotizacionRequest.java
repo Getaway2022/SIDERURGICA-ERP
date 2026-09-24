@@ -8,6 +8,7 @@ public class CotizacionRequest {
     private String cliente;
     private String ruc;
     private String producto;
+    private Long inventarioId;
     private Integer cantidad;
     private BigDecimal precio_unitario;
     private Long usuario_id;

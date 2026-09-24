@@ -11,11 +11,12 @@ import {
 import { InventarioService, Inventario as InventarioBD } from './services/inventario.service';
 import { AuthService } from '../../../core/auth/services/auth.service';
 import { CustomValidators } from '../../../shared/validators/custom-validators';
+import { ReposicionesComponent } from './reposiciones';
 
 @Component({
   selector: 'app-inventario',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, ReposicionesComponent],
   templateUrl: './inventario.html',
   styles: [],
   encapsulation: ViewEncapsulation.None,
@@ -62,6 +63,7 @@ export class InventarioComponent implements OnInit {
       unidad: ['unidad', [Validators.required, Validators.maxLength(30)]],
       stock: [0, [Validators.required, Validators.min(0)]],
       stockMinimo: [10, [Validators.required, Validators.min(0)]],
+      stockObjetivo: [20, [Validators.required, Validators.min(0)]],
       precioUnitario: [0, [Validators.required, Validators.min(0.01)]],
     });
   }
@@ -120,7 +122,13 @@ export class InventarioComponent implements OnInit {
   // ── Modal ────────────────────────────────────────────────────────────────
   openModalCrear() {
     this.modalMode = 'crear';
-    this.form.reset({ stock: 0, stockMinimo: 10, precioUnitario: 0, unidad: 'unidad' });
+    this.form.reset({
+      stock: 0,
+      stockMinimo: 10,
+      stockObjetivo: 20,
+      precioUnitario: 0,
+      unidad: 'unidad',
+    });
     this.inventarioForm = {};
     this.showModal = true;
   }
@@ -134,6 +142,7 @@ export class InventarioComponent implements OnInit {
       unidad: p.unidad || 'unidad',
       stock: p.stock,
       stockMinimo: p.stockMinimo,
+      stockObjetivo: p.stockObjetivo,
       precioUnitario: p.precioUnitario || 0,
     });
     this.showModal = true;
@@ -159,6 +168,7 @@ export class InventarioComponent implements OnInit {
       unidad: val.unidad,
       stock: Number(val.stock),
       stockMinimo: Number(val.stockMinimo),
+      stockObjetivo: Number(val.stockObjetivo),
       precioUnitario: Number(val.precioUnitario),
     };
 
@@ -172,9 +182,9 @@ export class InventarioComponent implements OnInit {
           this.cargarAlertas();
           this.cargarValorTotal();
         },
-        error: () => {
+        error: (err) => {
           this.guardando = false;
-          this.showToast('Error al agregar producto', 'error');
+          this.showToast(err.error?.mensaje || 'Error al agregar producto', 'error');
         },
       });
     } else {
@@ -187,9 +197,9 @@ export class InventarioComponent implements OnInit {
           this.cargarAlertas();
           this.cargarValorTotal();
         },
-        error: () => {
+        error: (err) => {
           this.guardando = false;
-          this.showToast('Error al actualizar producto', 'error');
+          this.showToast(err.error?.mensaje || 'Error al actualizar producto', 'error');
         },
       });
     }
@@ -210,8 +220,8 @@ export class InventarioComponent implements OnInit {
   }
 
   getEstadoInventario(p: InventarioBD): string {
-    if (p.stock === 0) return 'Sin stock';
-    if (p.stock <= (p.stockMinimo || 0)) return 'Bajo stock';
+    if ((p.stockDisponible ?? p.stock) === 0) return 'Sin stock';
+    if ((p.stockDisponible ?? p.stock) <= (p.stockMinimo || 0)) return 'Bajo stock';
     return 'Normal';
   }
 

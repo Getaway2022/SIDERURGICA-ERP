@@ -90,7 +90,7 @@ export class CotizacionesComponent implements OnInit {
     const control = this.form.get(campo);
     if (!control || !control.errors || !(control.touched || control.dirty)) return '';
     if (campo === 'cantidad' && control.errors['max']) {
-      return `Stock disponible: ${this.productoSeleccionado?.stock ?? 0} ${this.productoSeleccionado?.unidad ?? 'unidades'}`;
+      return `Stock disponible: ${this.productoSeleccionado?.stockDisponible ?? this.productoSeleccionado?.stock ?? 0} ${this.productoSeleccionado?.unidad ?? 'unidades'}`;
     }
     if (campo === 'cantidad' && control.errors['min']) {
       return 'La cantidad debe ser mayor a 0.';
@@ -101,7 +101,7 @@ export class CotizacionesComponent implements OnInit {
   cargarInventario() {
     this.inventarioService.listarInventario().subscribe({
       next: (data) => {
-        this.productosInventario = data.filter((p) => p.stock > 0);
+        this.productosInventario = data.filter((p) => (p.stockDisponible ?? p.stock) > 0);
         this.productosFiltrados = [...this.productosInventario];
       },
       error: () => {},
@@ -130,7 +130,7 @@ export class CotizacionesComponent implements OnInit {
     this.productoSearch = p.producto;
     this.form.get('producto')?.setValue(p.producto);
     this.form.get('precio_unitario')?.setValue(p.precioUnitario || p.precio_unitario || 0);
-    this._actualizarMaxCantidad(p.stock);
+    this._actualizarMaxCantidad(p.stockDisponible ?? p.stock);
     this.showDropdownProducto = false;
     this.cdr.detectChanges();
   }
@@ -214,6 +214,7 @@ export class CotizacionesComponent implements OnInit {
       cliente: val.cliente,
       ruc: val.ruc || '',
       producto: val.producto,
+      inventarioId: this.productoSeleccionado?.id,
       cantidad: Number(val.cantidad),
       precio_unitario: Number(val.precio_unitario),
       usuario_id: this.usuarioActual?.id || null,
@@ -242,7 +243,11 @@ export class CotizacionesComponent implements OnInit {
   cambiarEstado(c: any, estado: string) {
     this.cotizacionService.actualizarEstado(c.id, estado).subscribe({
       next: () => {
-        this.showToast(`Cotización ${c.codigo} → ${estado}`);
+        this.showToast(
+          estado === 'APROBADA'
+            ? `Cotización ${c.codigo} aprobada; pedido pendiente creado.`
+            : `Cotización ${c.codigo} → ${estado}`,
+        );
         this.cargarCotizaciones();
       },
       error: () => this.showToast('Error al cambiar estado', 'error'),

@@ -12,10 +12,13 @@
     import java.util.Optional;
 
     @Service
+    @org.springframework.transaction.annotation.Transactional
     public class InventarioService {
 
         @Autowired
         private InventarioRepository inventarioRepository;
+        @Autowired private OperacionAutomatica operacion;
+        @Autowired private ReposicionService reposicion;
 
         // ─────────────────────────────────────────
         // HU09 — Visualizar stock disponible
@@ -38,6 +41,7 @@
         // ─────────────────────────────────────────
 
         public Inventario crearProducto(InventarioRequest req) {
+            operacion.bloquear();
             validarRequest(req);
 
             Inventario inv = new Inventario();
@@ -45,30 +49,39 @@
             inv.setCategoria(req.getCategoria());
             inv.setStock(req.getStock() != null ? req.getStock() : 0);
             inv.setStockMinimo(req.getStockMinimo() != null ? req.getStockMinimo() : 10);
+            inv.setStockObjetivo(req.getStockObjetivo() != null ? req.getStockObjetivo() : Math.multiplyExact(inv.getStockMinimo(), 2));
             inv.setPrecioUnitario(req.getPrecioUnitario());
             inv.setUnidad(req.getUnidad() != null ? req.getUnidad() : "unidad");
             inv.setFechaActualizacion(LocalDateTime.now());
 
-            return inventarioRepository.save(inv);
+            inventarioRepository.save(inv);
+            reposicion.evaluar(inv);
+            return inv;
         }
 
         public Optional<Inventario> actualizarProducto(Long id, InventarioRequest req) {
+            operacion.bloquear();
             validarRequest(req);
 
             return inventarioRepository.findById(id).map(inv -> {
                 inv.setProducto(req.getProducto());
                 inv.setCategoria(req.getCategoria());
+                if (req.getStock() == null || req.getStock() < inv.getStockReservado()) throw new IllegalArgumentException("El stock físico no puede ser menor al reservado");
                 inv.setStock(req.getStock());
-                inv.setStockMinimo(req.getStockMinimo());
+                inv.setStockMinimo(req.getStockMinimo() != null ? req.getStockMinimo() : 10);
+                inv.setStockObjetivo(req.getStockObjetivo() != null ? req.getStockObjetivo() : Math.multiplyExact(inv.getStockMinimo(), 2));
                 inv.setPrecioUnitario(req.getPrecioUnitario());
                 inv.setUnidad(req.getUnidad());
                 inv.setFechaActualizacion(LocalDateTime.now());
-                return inventarioRepository.save(inv);
+                inventarioRepository.save(inv);
+                reposicion.evaluar(inv);
+                return inv;
             });
         }
 
         // PATCH /inventario/:id/stock — entrada o salida de stock
         public Optional<Inventario> actualizarStock(Long id, ActualizarStockRequest req) {
+            operacion.bloquear();
             if (req.getCantidad() == null || req.getCantidad() <= 0)
                 throw new IllegalArgumentException("La cantidad debe ser mayor a 0.");
             if (!"ENTRADA".equals(req.getTipo()) && !"SALIDA".equals(req.getTipo()))
@@ -80,12 +93,14 @@
                     nuevoStock = inv.getStock() + req.getCantidad();
                 } else {
                     nuevoStock = inv.getStock() - req.getCantidad();
-                    if (nuevoStock < 0)
+                    if (nuevoStock < inv.getStockReservado())
                         throw new IllegalArgumentException("Stock insuficiente. Stock actual: " + inv.getStock());
                 }
                 inv.setStock(nuevoStock);
                 inv.setFechaActualizacion(LocalDateTime.now());
-                return inventarioRepository.save(inv);
+                inventarioRepository.save(inv);
+                reposicion.evaluar(inv);
+                return inv;
             });
         }
 
@@ -105,6 +120,9 @@
         // Validaciones comunes
         // ─────────────────────────────────────────
         private void validarRequest(InventarioRequest req) {
+            int minimo = req.getStockMinimo() == null ? 10 : req.getStockMinimo();
+            if (req.getStockObjetivo() != null && req.getStockObjetivo() < minimo)
+                throw new IllegalArgumentException("El stock objetivo debe ser mayor o igual al mínimo");
             if (req.getProducto() == null || req.getProducto().trim().isEmpty())
                 throw new IllegalArgumentException("El nombre del producto es obligatorio.");
             if (req.getStock() != null && req.getStock() < 0)

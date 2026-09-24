@@ -16,7 +16,7 @@ public interface InventarioRepository extends JpaRepository<Inventario, Long> {
     List<Inventario> findAllOrdenado();
 
     // HU11 — solo los productos con stock <= stock_minimo
-    @Query("SELECT i FROM Inventario i WHERE i.stock <= i.stockMinimo ORDER BY i.stock ASC")
+    @Query("SELECT i FROM Inventario i WHERE i.stock - i.stockReservado <= i.stockMinimo ORDER BY i.stock ASC")
     List<Inventario> findBajoStock();
 
     // Buscar por categoría

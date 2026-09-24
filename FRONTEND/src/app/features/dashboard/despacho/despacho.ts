@@ -156,7 +156,8 @@ export class DespachoComponent implements OnInit {
         this.showToast(`Guía ${d.codigo} preparada`);
         this.cargar();
       },
-      error: (err) => this.showToast(err.error?.message || 'Error al preparar', 'error'),
+      error: (err) =>
+        this.showToast(err.error?.error || err.error?.message || 'Error al preparar', 'error'),
     });
   }
 
@@ -176,12 +177,15 @@ export class DespachoComponent implements OnInit {
       .validarComprobante(this.despachoActivo.id, this.comprobanteTexto)
       .subscribe({
         next: () => {
-          this.showToast('Comprobante validado');
+          this.showToast('Despacho enviado y stock físico actualizado');
           this.cargar();
           this.closeModal();
         },
         error: (err) =>
-          this.showToast(err.error?.message || 'Error al validar comprobante', 'error'),
+          this.showToast(
+            err.error?.error || err.error?.message || 'Error al validar comprobante',
+            'error',
+          ),
       });
   }
 
@@ -192,17 +196,24 @@ export class DespachoComponent implements OnInit {
         this.showToast(`Entrega confirmada: ${d.codigo}`);
         this.cargar();
       },
-      error: (err) => this.showToast(err.error?.message || 'Falta validar comprobante', 'error'),
+      error: (err) =>
+        this.showToast(
+          err.error?.error || err.error?.message || 'Falta validar comprobante',
+          'error',
+        ),
     });
   }
 
   confirmarEliminar() {
     if (!this.deleteTarget?.id) return;
-    this.despachoService.eliminar(this.deleteTarget.id).subscribe(() => {
-      this.despachos = this.despachos.filter((d) => d !== this.deleteTarget);
-      this.cdr.detectChanges();
-      this.showToast('Despacho eliminado');
-      this.closeModal();
+    this.despachoService.eliminar(this.deleteTarget.id).subscribe({
+      next: () => {
+        this.cargar();
+        this.showToast('Despacho anulado y reserva liberada');
+        this.closeModal();
+        this.cdr.detectChanges();
+      },
+      error: (err) => this.showToast(err.error?.error || 'No se pudo anular el despacho', 'error'),
     });
   }
 

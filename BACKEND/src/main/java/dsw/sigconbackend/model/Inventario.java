@@ -24,6 +24,17 @@ public class Inventario {
     private String categoria;
     private Integer stock;
 
+    @Column(name = "stock_reservado", nullable = false)
+    private Integer stockReservado = 0;
+
+    @Column(name = "stock_objetivo")
+    private Integer stockObjetivo;
+
+    @Transient
+    public int getStockDisponible() {
+        return (stock == null ? 0 : stock) - (stockReservado == null ? 0 : stockReservado);
+    }
+
     @Column(name = "stock_minimo")
     private Integer stockMinimo;
 
@@ -38,6 +49,6 @@ public class Inventario {
     // HU11 — campo calculado: true si stock <= stock_minimo
     @Transient
     public boolean isBajoStock() {
-        return stock != null && stockMinimo != null && stock <= stockMinimo;
+        return stockMinimo != null && getStockDisponible() <= stockMinimo;
     }
 }
