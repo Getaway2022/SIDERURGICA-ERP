@@ -5,10 +5,11 @@ Sistema ERP académico para la gestión comercial, logística y de recursos huma
 ## Demo desplegada
 
 - Frontend Angular: [https://siderurgica-erp.vercel.app](https://siderurgica-erp.vercel.app)
-- Backend Spring Boot: [https://siderurgica-erp-production.up.railway.app](https://siderurgica-erp-production.up.railway.app)
+- Backend Spring Boot: [https://siderurgica-erp.onrender.com](https://siderurgica-erp.onrender.com)
 - Base de datos: PostgreSQL en Neon
 
 > Proyecto demostrativo desarrollado para el curso de Desarrollo Web del séptimo ciclo. No representa un sistema productivo oficial.
+> El backend está en el plan gratuito de Render: si estuvo inactivo, la primera carga puede tardar unos 50 segundos.
 
 ## Módulos
 
@@ -25,7 +26,7 @@ Sistema ERP académico para la gestión comercial, logística y de recursos huma
 | Capa | Tecnologías | Despliegue |
 |---|---|---|
 | Frontend | Angular 21, TypeScript, RxJS, SCSS | Vercel |
-| Backend | Java 17, Spring Boot, Spring Security, JPA, JWT | Railway |
+| Backend | Java 17, Spring Boot, Spring Security, JPA, JWT | Render |
 | Datos | PostgreSQL | Neon |
 
 ## Estructura del repositorio
@@ -67,7 +68,7 @@ npm start
 
 ## Seguridad
 
-El repositorio no contiene credenciales reales. Las claves de Neon y JWT deben configurarse como variables privadas de Railway o variables locales del sistema.
+El repositorio no contiene credenciales reales. Las claves de Neon y JWT deben configurarse como variables privadas de Render o variables locales del sistema.
 
 ## Analítica
 
@@ -78,7 +79,7 @@ Reporte de Power BI de dos páginas (comercial e inventario) sobre una **branch 
 ```mermaid
 flowchart LR
     U["Usuario"] --> FE["Angular 21<br/>Vercel"]
-    FE -->|"HTTPS + JWT"| BE["Spring Boot<br/>Railway"]
+    FE -->|"HTTPS + JWT"| BE["Spring Boot<br/>Render"]
     BE --> DB[("PostgreSQL<br/>Neon, branch production")]
     DB -.->|"branch"| AN[("Neon, branch analytics<br/>datos demo + vistas analytics.*")]
     AN -->|"rol powerbi_reader<br/>solo lectura"| PBI["Power BI Desktop<br/>reporte .pbix"]

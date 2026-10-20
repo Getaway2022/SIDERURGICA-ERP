@@ -4,7 +4,7 @@ API REST del ERP académico Siderúrgica Perú, desarrollada con Spring Boot y S
 
 ## Despliegue
 
-- API pública: [Railway](https://siderurgica-erp-production.up.railway.app)
+- API pública: [Render](https://siderurgica-erp.onrender.com)
 - Frontend: [Vercel](https://siderurgica-erp.vercel.app)
 - Base de datos: PostgreSQL administrado en Neon
 - Estado: desplegado con fines académicos y de portafolio
@@ -52,7 +52,7 @@ El servidor local estará disponible en `http://localhost:3000`.
 | `AUTH_COOKIE_SECURE` | Activa cookies `Secure` en HTTPS |
 | `PORT` | Puerto proporcionado por la plataforma |
 
-Las credenciales se configuran exclusivamente como variables privadas de Railway. No deben guardarse en GitHub.
+Las credenciales se configuran exclusivamente como variables privadas de Render. No deben guardarse en GitHub.
 
 ## Seguridad
 
@@ -60,7 +60,7 @@ Las credenciales se configuran exclusivamente como variables privadas de Railway
 
 Si la consola muestra que el preflight de `/login` no incluye
 `Access-Control-Allow-Origin`, comprueba que el origen de la página esté incluido
-en `CORS_ALLOWED_ORIGINS` del servicio backend en Railway. Cada URL de despliegue
+en `CORS_ALLOWED_ORIGINS` del servicio backend en Render. Cada URL de despliegue
 de Vercel es un origen distinto del dominio principal.
 
 Para el dominio principal y el despliegue mostrado en la captura, configura:
@@ -71,7 +71,7 @@ AUTH_COOKIE_SECURE=true
 ```
 
 Conserva cualquier otro origen autorizado que aún se utilice. Aplica las variables
-y vuelve a desplegar el backend en Railway. Si cambia la URL de despliegue de
+y vuelve a desplegar el backend en Render. Si cambia la URL de despliegue de
 Vercel, actualiza la lista o accede desde el dominio principal. No uses `*`, porque
 el login envía cookies mediante `withCredentials`.
 
@@ -110,9 +110,9 @@ src/main/java/dsw/sigconbackend/
 └── service/      # lógica del negocio
 ```
 
-## Despliegue en Railway
+## Despliegue en Render
 
-El repositorio contiene un `Dockerfile`. En Railway se utiliza:
+El repositorio contiene un `Dockerfile`. En Render se utiliza:
 
 ```text
 Root Directory: /BACKEND

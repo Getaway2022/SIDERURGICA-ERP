@@ -5,7 +5,7 @@ Aplicación web académica para administrar procesos comerciales, logísticos y 
 ## Despliegue
 
 - Aplicación: [https://siderurgica-erp.vercel.app](https://siderurgica-erp.vercel.app)
-- API: [Railway](https://siderurgica-erp-production.up.railway.app)
+- API: [Render](https://siderurgica-erp.onrender.com)
 - Estado: desplegado con fines académicos y de portafolio
 
 ## Funcionalidades
@@ -51,7 +51,7 @@ npm run check      # formato, pruebas y build
 
 ```text
 src/environments/environment.ts       # API local
-src/environments/environment.prod.ts  # API desplegada en Railway
+src/environments/environment.prod.ts  # API desplegada en Render
 ```
 
 Las credenciales y secretos nunca deben almacenarse en los archivos de Angular, porque todo el frontend es público en el navegador.
