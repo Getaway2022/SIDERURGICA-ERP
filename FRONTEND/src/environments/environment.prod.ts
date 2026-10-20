@@ -9,5 +9,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
 export const environment = {
   production: true,
-  apiUrl: 'https://siderurgica-erp-production.up.railway.app',
+  apiUrl: 'https://siderurgica-erp.onrender.com',
 };
