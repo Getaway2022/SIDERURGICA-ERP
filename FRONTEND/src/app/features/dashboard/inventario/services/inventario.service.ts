@@ -7,6 +7,9 @@ export interface Inventario {
   producto: string;
   categoria?: string;
   stock: number;
+  stockReservado?: number;
+  stockDisponible?: number;
+  stockObjetivo?: number;
   stock_minimo?: number;
   stockMinimo?: number;
   precio_unitario?: number;

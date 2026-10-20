@@ -21,6 +21,15 @@ public class Pedido {
     private String producto;
     private Integer cantidad;
 
+    @Column(name = "cotizacion_id", unique = true)
+    private Long cotizacionId;
+
+    @Column(name = "inventario_id")
+    private Long inventarioId;
+
+    @Column(name = "estado_stock", nullable = false)
+    private String estadoStock = "SIN_RESERVA";
+
     @JsonProperty("precio_unitario")
     @Column(name = "precio_unitario")
     private BigDecimal precioUnitario;

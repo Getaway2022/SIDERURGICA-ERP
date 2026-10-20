@@ -8,6 +8,8 @@
   </div>
 </div>
 
+<app-reposiciones (cambio)="cargarOrdenes(); cargarPresupuesto(); cargarInventarios()" />
+
 <div class="summary-strip">
   <div class="summary-item">
     <div class="val">{{ ordenes.length }}</div>
@@ -42,6 +44,8 @@
       <option value="Pendiente">Pendiente</option>
       <option value="En tránsito">En tránsito</option>
       <option value="Rechazada">Rechazada</option>
+      <option value="Cancelada">Cancelada</option>
+      <option value="Recibida">Recibida</option>
     </select>
   </div>
   <table>
@@ -77,10 +81,32 @@
               >{{ o.estado }} ▾</span
             >
             <div class="estado-menu" [style.display]="o._open ? 'block' : 'none'">
-              <div (click)="cambiarEstado(o, 'Pendiente'); o._open = false">⏳ Pendiente</div>
-              <div (click)="cambiarEstado(o, 'Aprobada'); o._open = false">✓ Aprobada</div>
-              <div (click)="cambiarEstado(o, 'En tránsito'); o._open = false">🚚 En tránsito</div>
-              <div (click)="cambiarEstado(o, 'Rechazada'); o._open = false">✕ Rechazada</div>
+              <div
+                *ngIf="o.estado === 'Pendiente'"
+                (click)="cambiarEstado(o, 'Aprobada'); o._open = false"
+              >
+                ✓ Aprobada
+              </div>
+              <div
+                *ngIf="o.estado === 'Aprobada'"
+                (click)="cambiarEstado(o, 'En tránsito'); o._open = false"
+              >
+                🚚 En tránsito
+              </div>
+              <div
+                *ngIf="o.estado === 'Pendiente'"
+                (click)="cambiarEstado(o, 'Rechazada'); o._open = false"
+              >
+                ✕ Rechazada
+              </div>
+              <div
+                *ngIf="
+                  o.estado === 'Pendiente' || o.estado === 'Aprobada' || o.estado === 'En tránsito'
+                "
+                (click)="cambiarEstado(o, 'Cancelada'); o._open = false"
+              >
+                Cancelar
+              </div>
             </div>
           </div>
         </td>
@@ -88,13 +114,20 @@
           <div class="action-col">
             <button
               class="btn btn-success btn-sm"
-              *ngIf="o.estado === 'Aprobada'"
+              *ngIf="o.estado === 'Aprobada' || o.estado === 'En tránsito'"
               (click)="abrirRegistrarCompra(o)"
             >
               Registrar Compra
             </button>
-            <button class="btn btn-secondary btn-sm" (click)="openModalEditar(o)">Editar</button>
-            <button class="btn btn-danger btn-sm" (click)="pedirEliminar(o)">✕</button>
+            <button
+              *ngIf="
+                o.estado === 'Pendiente' || o.estado === 'Aprobada' || o.estado === 'En tránsito'
+              "
+              class="btn btn-danger btn-sm"
+              (click)="pedirEliminar(o)"
+            >
+              Cancelar orden
+            </button>
           </div>
         </td>
       </tr>
@@ -263,7 +296,9 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
-          <button class="btn btn-danger" (click)="confirmarEliminar()">Sí, eliminar</button>
+          <button class="btn btn-danger" (click)="confirmarEliminar()">
+            Sí, cancelar y liberar presupuesto
+          </button>
         </div>
       </div>
     </div>

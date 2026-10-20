@@ -46,6 +46,9 @@
       <option value="APROBADO">APROBADO</option>
       <option value="RECHAZADO">RECHAZADO</option>
       <option value="FACTURADO">FACTURADO</option>
+      <option value="ANULADO">ANULADO</option>
+      <option value="ENVIADO">ENVIADO</option>
+      <option value="ENTREGADO">ENTREGADO</option>
     </select>
   </div>
 
@@ -94,7 +97,7 @@
           >
             <option value="PENDIENTE">⏳ PENDIENTE</option>
             <option value="APROBADO">✓ APROBADO</option>
-            <option value="RECHAZADO">✕ RECHAZADO</option>
+            <option value="ANULADO">✕ ANULADO</option>
           </select>
           <span
             *ngIf="p.estado !== 'PENDIENTE'"
@@ -120,6 +123,17 @@
               💰 Generar Venta
             </button>
             <span *ngIf="p.estado === 'FACTURADO'" class="td-sub">✓ Venta creada</span>
+            <span *ngIf="p.estadoStock === 'REVISION_LEGADO'" class="td-sub"
+              >Requiere conciliación del stock histórico</span
+            >
+            <button
+              *ngIf="p.estado === 'FACTURADO' || p.estado === 'APROBADO'"
+              class="btn btn-danger btn-sm"
+              [disabled]="loadingAction"
+              (click)="cambiarEstado(p, 'ANULADO')"
+            >
+              Anular y liberar reserva
+            </button>
           </div>
         </td>
       </tr>
@@ -202,9 +216,11 @@
                 <div class="producto-meta">
                   <span
                     class="producto-stock"
-                    [style.color]="p.stock <= (p.stockMinimo || 0) ? '#DD6B20' : '#38A169'"
+                    [style.color]="
+                      (p.stockDisponible ?? p.stock) <= (p.stockMinimo || 0) ? '#DD6B20' : '#38A169'
+                    "
                   >
-                    Stock: {{ p.stock }} {{ p.unidad }}
+                    Stock: {{ p.stockDisponible ?? p.stock }} {{ p.unidad }}
                   </span>
                   <span class="producto-precio">
                     {{ formatMoney(p.precioUnitario || p.precio_unitario || 0) }}
@@ -234,14 +250,15 @@
               formControlName="cantidad"
               placeholder="0"
               min="1"
-              [max]="productoSeleccionado?.stock || 99999"
+              [max]="productoSeleccionado?.stockDisponible ?? productoSeleccionado?.stock ?? 99999"
               [class.input-error]="isInvalid('cantidad')"
             />
             <div class="field-error" *ngIf="isInvalid('cantidad')">
               <span class="error-icon">⚠</span> {{ errorMsg('cantidad', 'Cantidad') }}
             </div>
             <div class="field-hint" *ngIf="productoSeleccionado && !isInvalid('cantidad')">
-              Máximo: {{ productoSeleccionado.stock }} {{ productoSeleccionado.unidad }}
+              Máximo: {{ productoSeleccionado.stockDisponible ?? productoSeleccionado.stock }}
+              {{ productoSeleccionado.unidad }}
             </div>
           </div>
 

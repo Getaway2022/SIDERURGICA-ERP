@@ -54,6 +54,7 @@ public class SecurityConfig {
 
                 // ── Almacén: ALMACEN + ADMIN ──────────────────────────────
                 // DEF-02: agregados /orden-compra/**, /compra/**, /presupuesto/**
+                .requestMatchers("/reposiciones/**").hasAnyRole("ALMACEN", "ADMIN")
                 .requestMatchers("/orden-compra/**").hasAnyRole("ALMACEN", "ADMIN")
                 .requestMatchers("/compra/**").hasAnyRole("ALMACEN", "ADMIN")
                 .requestMatchers("/presupuesto/**").hasAnyRole("ALMACEN", "ADMIN")
@@ -61,8 +62,9 @@ public class SecurityConfig {
                 .requestMatchers("/proveedor/**").hasAnyRole("ALMACEN", "ADMIN")
 
                 // ── Almacén + VENTAS (despacho e inventario son compartidos) ──
-                .requestMatchers("/inventario/**").hasAnyRole("ALMACEN", "ADMIN", "VENTAS")
-                .requestMatchers("/despachos/**").hasAnyRole("ALMACEN", "ADMIN", "VENTAS")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/inventario/**").hasAnyRole("ALMACEN", "ADMIN", "VENTAS")
+                .requestMatchers("/inventario/**").hasAnyRole("ALMACEN", "ADMIN")
+                .requestMatchers("/despacho/**", "/despachos/**").hasAnyRole("ALMACEN", "ADMIN", "VENTAS")
 
                 // ── RRHH: RRHH + ADMIN ────────────────────────────────────
                 .requestMatchers("/empleados/**").hasAnyRole("RRHH", "ADMIN")

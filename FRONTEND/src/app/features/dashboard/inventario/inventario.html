@@ -54,7 +54,10 @@
         <th>ID</th>
         <th>Producto</th>
         <th>Categoría</th>
-        <th>Stock</th>
+        <th>Stock físico</th>
+        <th>Reservado</th>
+        <th>Disponible</th>
+        <th>Objetivo</th>
         <th>Mínimo</th>
         <th>Precio Unit.</th>
         <th>Valor Stock</th>
@@ -64,7 +67,7 @@
     </thead>
     <tbody>
       <tr *ngIf="loadingInventario">
-        <td colspan="9" class="empty-row">Cargando inventario...</td>
+        <td colspan="12" class="empty-row">Cargando inventario...</td>
       </tr>
       <tr *ngFor="let p of inventarioBDFiltrado">
         <td>
@@ -85,6 +88,9 @@
             {{ p.stock }} {{ p.unidad }}
           </span>
         </td>
+        <td>{{ p.stockReservado || 0 }}</td>
+        <td>{{ p.stockDisponible ?? p.stock }}</td>
+        <td>{{ p.stockObjetivo }}</td>
         <td>{{ p.stockMinimo }}</td>
         <td>{{ p.precioUnitario ? formatMoney(p.precioUnitario) : '—' }}</td>
         <td>{{ p.precioUnitario ? formatMoney(p.stock * p.precioUnitario) : '—' }}</td>
@@ -95,16 +101,27 @@
         </td>
         <td>
           <div class="action-col">
-            <button class="btn btn-secondary btn-sm" (click)="openModalEditar(p)">Editar</button>
+            <button
+              *ngIf="puedeRegistrar()"
+              class="btn btn-secondary btn-sm"
+              (click)="openModalEditar(p)"
+            >
+              Editar
+            </button>
           </div>
         </td>
       </tr>
       <tr *ngIf="!loadingInventario && inventarioBDFiltrado.length === 0">
-        <td colspan="9" class="empty-row">No se encontraron productos</td>
+        <td colspan="12" class="empty-row">No se encontraron productos</td>
       </tr>
     </tbody>
   </table>
 </div>
+
+<app-reposiciones
+  *ngIf="puedeRegistrar()"
+  (cambio)="cargarInventario(); cargarAlertas(); cargarValorTotal()"
+/>
 
 <!-- ══════════════════ MODAL ══════════════════ -->
 <div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
@@ -190,10 +207,24 @@
               <span class="error-icon">⚠</span> {{ errorMsg('stockMinimo', 'Stock mínimo') }}
             </div>
             <div class="field-hint" *ngIf="!isInvalid('stockMinimo')">
-              Se mostrará alerta cuando el stock baje de este valor
+              Se solicita reposición cuando el stock disponible llega al mínimo
             </div>
           </div>
 
+          <div class="form-field">
+            <label>Stock objetivo</label>
+            <input
+              type="number"
+              formControlName="stockObjetivo"
+              [min]="form.value.stockMinimo || 0"
+            />
+            <div class="field-hint">
+              Cantidad que se busca alcanzar al reponer. Debe ser al menos el mínimo.
+            </div>
+            <div class="field-error" *ngIf="isInvalid('stockObjetivo')">
+              {{ errorMsg('stockObjetivo', 'Stock objetivo') }}
+            </div>
+          </div>
           <!-- Precio unitario -->
           <div class="form-field">
             <label>Precio Unitario (S/) <span class="required-star">*</span></label>

@@ -16,13 +16,14 @@ import {
 import { ProveedorService, Proveedor } from '../proveedores/services/proveedor.service';
 import { InventarioService, Inventario } from '../inventario/services/inventario.service';
 import { CustomValidators } from '../../../shared/validators/custom-validators';
+import { ReposicionesComponent } from '../inventario/reposiciones';
 
 // OrdenCompra ya NO se define aquí — viene del service ↑
 
 @Component({
   selector: 'app-abastecimiento',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, ReposicionesComponent],
   templateUrl: './abastecimiento.html',
   styles: [],
 })
@@ -191,7 +192,11 @@ export class AbastecimientoComponent implements OnInit {
           this.cargarPresupuesto();
           this.closeModal();
         },
-        error: (err) => this.showToast(err.error?.message || 'Capital insuficiente', 'error'),
+        error: (err) =>
+          this.showToast(
+            err.error?.error || err.error?.message || 'No se pudo crear la orden',
+            'error',
+          ),
       });
     } else {
       const idx = this.ordenes.findIndex((o) => o.id === this.ordenForm.id);
@@ -220,12 +225,17 @@ export class AbastecimientoComponent implements OnInit {
       .subscribe({
         next: (resultado) => {
           this.closeModal();
+          this.cargarOrdenes();
           this.cargarInventarios();
           this.resultadoCompra = resultado;
           this.showModalResultado = true;
           this.cdr.markForCheck();
         },
-        error: (err) => this.showToast(err.error?.message || 'Error al registrar compra', 'error'),
+        error: (err) =>
+          this.showToast(
+            err.error?.error || err.error?.message || 'Error al registrar compra',
+            'error',
+          ),
       });
   }
 
@@ -236,11 +246,14 @@ export class AbastecimientoComponent implements OnInit {
 
   confirmarEliminar() {
     if (!this.deleteTarget?.id) return;
-    this.abastService.eliminarOrden(this.deleteTarget.id).subscribe(() => {
-      this.cargarOrdenes();
-      this.cargarPresupuesto();
-      this.showToast('Orden eliminada');
-      this.closeModal();
+    this.abastService.eliminarOrden(this.deleteTarget.id).subscribe({
+      next: () => {
+        this.cargarOrdenes();
+        this.cargarPresupuesto();
+        this.showToast('Orden cancelada y presupuesto liberado');
+        this.closeModal();
+      },
+      error: (err) => this.showToast(err.error?.error || 'No se pudo cancelar la orden', 'error'),
     });
   }
 
@@ -254,7 +267,11 @@ export class AbastecimientoComponent implements OnInit {
         this.cargarOrdenes();
         this.cargarPresupuesto();
       },
-      error: (err) => this.showToast(err.error?.message || 'Error al cambiar estado', 'error'),
+      error: (err) =>
+        this.showToast(
+          err.error?.error || err.error?.message || 'Error al cambiar estado',
+          'error',
+        ),
     });
   }
 

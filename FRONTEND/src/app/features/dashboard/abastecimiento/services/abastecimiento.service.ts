@@ -13,7 +13,7 @@ export interface OrdenCompra {
   cantidad?: string;
   total: number;
   fechaEntrega?: string;
-  estado?: 'Aprobada' | 'Pendiente' | 'En tránsito' | 'Rechazada';
+  estado?: 'Aprobada' | 'Pendiente' | 'En tránsito' | 'Rechazada' | 'Cancelada' | 'Recibida';
   _open?: boolean;
 }
 

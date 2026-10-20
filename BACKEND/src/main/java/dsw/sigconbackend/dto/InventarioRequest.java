@@ -10,6 +10,7 @@ public class InventarioRequest {
     private String categoria;
     private Integer stock;
     private Integer stockMinimo;
+    private Integer stockObjetivo;
     private BigDecimal precioUnitario;
     private String unidad;
 }

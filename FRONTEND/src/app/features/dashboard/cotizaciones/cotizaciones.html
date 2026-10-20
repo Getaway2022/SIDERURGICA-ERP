@@ -207,9 +207,11 @@
                 <div class="producto-meta">
                   <span
                     class="producto-stock"
-                    [style.color]="p.stock <= (p.stockMinimo || 0) ? '#DD6B20' : '#38A169'"
+                    [style.color]="
+                      (p.stockDisponible ?? p.stock) <= (p.stockMinimo || 0) ? '#DD6B20' : '#38A169'
+                    "
                   >
-                    Stock: {{ p.stock }} {{ p.unidad }}
+                    Stock: {{ p.stockDisponible ?? p.stock }} {{ p.unidad }}
                   </span>
                   <span class="producto-precio">{{
                     formatMoney(p.precioUnitario || p.precio_unitario || 0)
@@ -239,14 +241,15 @@
               formControlName="cantidad"
               placeholder="0"
               min="1"
-              [max]="productoSeleccionado?.stock || 99999"
+              [max]="productoSeleccionado?.stockDisponible ?? productoSeleccionado?.stock ?? 99999"
               [class.input-error]="isInvalid('cantidad')"
             />
             <div class="field-error" *ngIf="isInvalid('cantidad')">
               <span class="error-icon">⚠</span> {{ errorMsg('cantidad', 'Cantidad') }}
             </div>
             <div class="field-hint" *ngIf="productoSeleccionado && !isInvalid('cantidad')">
-              Máximo: {{ productoSeleccionado.stock }} {{ productoSeleccionado.unidad }}
+              Máximo: {{ productoSeleccionado.stockDisponible ?? productoSeleccionado.stock }}
+              {{ productoSeleccionado.unidad }}
             </div>
           </div>
 

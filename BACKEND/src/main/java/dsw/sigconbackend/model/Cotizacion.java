@@ -21,6 +21,9 @@ public class Cotizacion {
     private String producto;
     private Integer cantidad;
 
+    @Column(name = "inventario_id")
+    private Long inventarioId;
+
     @JsonProperty("precio_unitario")
     @Column(name = "precio_unitario")
     private BigDecimal precioUnitario;

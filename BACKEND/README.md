@@ -90,6 +90,8 @@ devuelva `Access-Control-Allow-Origin` con el origen de la página y
 
 ## Pruebas y compilación
 
+Los flujos de alta prioridad, su migración y la conciliación de documentos existentes se describen en [AUTOMATIZACION.md](AUTOMATIZACION.md).
+
 ```bash
 mvn test
 mvn clean package

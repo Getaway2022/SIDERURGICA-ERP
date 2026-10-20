@@ -30,6 +30,9 @@ public class OrdenCompra {
     @Column(nullable = false)
     private BigDecimal total;
 
+    @Column(name = "presupuesto_periodo")
+    private String presupuestoPeriodo;
+
     @Column(name = "fecha_entrega")
     private LocalDate fechaEntrega;
 

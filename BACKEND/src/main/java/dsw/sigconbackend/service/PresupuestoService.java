@@ -19,13 +19,13 @@ public class PresupuestoService {
 
     public Presupuesto obtenerActual() {
         return repo.findByPeriodo(periodoActual())
-            .orElseThrow(() -> new RuntimeException("No hay presupuesto configurado para " + periodoActual()));
+            .orElseThrow(() -> new IllegalArgumentException("No hay presupuesto configurado para " + periodoActual()));
     }
 
     public void validarCapital(BigDecimal monto) {
         Presupuesto p = obtenerActual();
         if (p.getMontoDisponible().compareTo(monto) < 0) {
-            throw new RuntimeException("Capital insuficiente. Disponible: S/ " + p.getMontoDisponible());
+            throw new IllegalArgumentException("Capital insuficiente. Disponible: S/ " + p.getMontoDisponible());
         }
     }
 
@@ -38,6 +38,14 @@ public class PresupuestoService {
 
     public void liberar(BigDecimal monto) {
         Presupuesto p = obtenerActual();
+        p.setMontoDisponible(p.getMontoDisponible().add(monto));
+        repo.save(p);
+    }
+
+    public void liberar(BigDecimal monto, String periodo) {
+        if (periodo == null) throw new IllegalArgumentException("Orden histórica: concilie el período de presupuesto antes de cancelar");
+        Presupuesto p = repo.findByPeriodo(periodo)
+            .orElseThrow(() -> new IllegalArgumentException("No existe presupuesto para el período de la orden: " + periodo));
         p.setMontoDisponible(p.getMontoDisponible().add(monto));
         repo.save(p);
     }

@@ -10,6 +10,8 @@ import java.util.List;
 @Repository
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
+    java.util.Optional<Pedido> findByCotizacionId(Long cotizacionId);
+
     List<Pedido> findAllByOrderByFechaRegistroDesc();
 
     @Query(value = """

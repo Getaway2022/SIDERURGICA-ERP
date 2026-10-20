@@ -68,7 +68,11 @@ export class VentasComponent implements OnInit {
     this.ventaService.cambiarEstado(v.id, estado).subscribe({
       next: (actualizada) => {
         v.estado = actualizada.estado;
-        this.showToast(`Venta ${v.codigo} → ${estado}`);
+        this.showToast(
+          estado === 'APROBADO'
+            ? `Venta ${v.codigo} aprobada; despacho pendiente creado.`
+            : `Venta ${v.codigo} → ${estado}`,
+        );
         this.cargarVentas();
       },
       error: (err) => this.showToast(err.error?.error || 'Error al cambiar estado', 'error'),
@@ -88,11 +92,11 @@ export class VentasComponent implements OnInit {
 
   // ── Generar Despacho ──────────────────────────────────────────────────────
   generarDespacho(v: Venta) {
-    if (!v.id || !confirm(`¿Generar despacho para la venta ${v.codigo}?`)) return;
+    if (!v.id) return;
     this.loadingAction = true;
     this.ventaService.generarDespacho(v.id).subscribe({
       next: (despacho) => {
-        this.showToast(`✅ Despacho ${despacho.codigo} generado correctamente`, 'success');
+        this.showToast(`Despacho ${despacho.codigo} disponible en Gestión de Despacho`, 'success');
         this.cargarVentas();
         this.loadingAction = false;
       },

@@ -19,6 +19,8 @@ public class CotizacionService {
 
     @Autowired
     private CotizacionRepository cotizacionRepository;
+    @Autowired private FlujoComercialService flujo;
+    @Autowired private OperacionAutomatica operacion;
 
     // HU04 — misma lógica que tu Node
     private int calcularDescuento(int cantidad) {
@@ -54,6 +56,7 @@ public class CotizacionService {
     }
 
     // HU03 — Registrar cotización
+    @org.springframework.transaction.annotation.Transactional
     public Cotizacion registrarCotizacion(CotizacionRequest req) {
         int cantidadNum       = req.getCantidad();
         BigDecimal precio     = req.getPrecio_unitario();
@@ -64,10 +67,11 @@ public class CotizacionService {
         BigDecimal total      = subtotal.subtract(descMonto);
 
         Cotizacion c = new Cotizacion();
-        c.setCodigo("COT-" + System.currentTimeMillis());
+        c.setCodigo(operacion.codigo("COT"));
         c.setCliente(req.getCliente());
         c.setRuc(req.getRuc());
         c.setProducto(req.getProducto());
+        c.setInventarioId(req.getInventarioId());
         c.setCantidad(cantidadNum);
         c.setPrecioUnitario(precio);
         c.setSubtotal(subtotal);
@@ -80,12 +84,6 @@ public class CotizacionService {
     }
 
     public Optional<Cotizacion> cambiarEstado(Long id, String estado) {
-        List<String> permitidos = List.of("PENDIENTE", "APROBADA", "RECHAZADA");
-        if (!permitidos.contains(estado))
-            throw new IllegalArgumentException("Estado no válido");
-        return cotizacionRepository.findById(id).map(c -> {
-            c.setEstado(estado);
-            return cotizacionRepository.save(c);
-        });
+        return flujo.cambiarCotizacion(id, estado);
     }
 }
